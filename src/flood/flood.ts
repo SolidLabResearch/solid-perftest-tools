@@ -35,11 +35,13 @@ import {
 import { fork } from "child_process";
 import { ControllerMsg, WorkerMsg } from "./flood-messages.js";
 import { MessageCheat } from "./message-cheat.js";
+import { getAccounts, ProvidedAccountInfo } from "../common/account.js";
 
 async function main() {
   const cli = getCliArgs();
   const fetcher: AnyFetchType = cli.useNodeFetch ? nodeFetch : es6fetch;
 
+  const accounts: ProvidedAccountInfo[] = await getAccounts(cli);
   const authFetchCache = new AuthFetchCache(
     cli,
     accounts,

@@ -13,64 +13,18 @@ import {
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
-import { AccountAction, AccountSource, getCliArgs } from "./populate-args.js";
+import { getCliArgs } from "./populate-args.js";
 import fs from "fs";
 import { readFile } from "node:fs/promises";
-import { accountEmail, ProvidedAccountInfo } from "../utils/account.js";
+import { ProvidedAccountInfo } from "../common/account.js";
+import { getAccounts } from "../common/account";
+import { AccountAction } from "../common/cli-args";
 
 async function main() {
   const cli = getCliArgs();
   const fetcher: AnyFetchType = false ? nodeFetch : es6fetch;
 
-  const providedAccountInfo: ProvidedAccountInfo[] = [];
-  if (cli.accountSource === AccountSource.Template) {
-    for (let index = 0; index < cli.accountSourceCount; index++) {
-      const username = cli.accountSourceTemplateUsername.replaceAll(
-        "{{NR}}",
-        `${index}`
-      );
-      providedAccountInfo.push({
-        username,
-        password: cli.accountSourceTemplatePass.replaceAll(
-          "{{NR}}",
-          `${index}`
-        ),
-        podName: username,
-        email: accountEmail(username),
-        index,
-      });
-    }
-  } else if (cli.accountSource === AccountSource.File) {
-    const providedAccountInfoFileContent = await readFile(
-      cli.accountSourceFile || "error",
-      { encoding: "utf8" }
-    );
-    const providedAccountInfoArr = JSON.parse(providedAccountInfoFileContent);
-    if (!Array.isArray(providedAccountInfoArr)) {
-      throw new Error(
-        `File "${cli.accountSourceFile}" does not contain a JSON array.`
-      );
-    }
-    let index = 0;
-    for (const ui of providedAccountInfoArr) {
-      if (!ui.username || !ui.password) {
-        throw new Error(
-          `File "${cli.accountSourceFile}" contains an entry without username and/or password.`
-        );
-      }
-      providedAccountInfo.push({
-        username: ui.username,
-        password: ui.password,
-        podName: ui.padName ?? ui.username,
-        email: ui.email ?? accountEmail(ui.username),
-        index,
-      });
-      index++;
-    }
-  } else {
-    throw new Error(`Unsupported --account-source ${cli.accountSource}`);
-  }
-
+  const providedAccountInfo: ProvidedAccountInfo[] = await getAccounts(cli);
   const createdUsersInfo: CreatedUserInfo[] = [];
 
   for (const cssBaseUrl of cli.cssBaseUrl) {

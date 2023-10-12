@@ -2,7 +2,11 @@
 
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { CliArgsCommon } from "../common/cli-args";
+import {
+  CliArgsCommon,
+  getArgvCommon,
+  processYargsCommon,
+} from "../common/cli-args";
 
 export type StepName =
   | "loadAC"
@@ -31,24 +35,9 @@ const ALLOWED_STEPS: StepName[] = [
   "flood",
 ];
 
-let ya = yargs(hideBin(process.argv))
+let ya = getArgvCommon()
   .usage("Usage: $0 --url <url> [--steps <steps>] ...")
   //general options
-  .option("v", {
-    group: "Base:",
-    type: "count",
-    description:
-      "Verbosity. The more times this option is added, the more messages are printed.",
-    demandOption: false,
-  })
-  .option("url", {
-    group: "Base:",
-    // alias: "u",
-    type: "string",
-    description: "Base URL of the CSS",
-    demandOption: true,
-    array: true,
-  })
   .option("steps", {
     group: "Base:",
     type: "string",
@@ -309,7 +298,6 @@ All steps (makes little sense):
     }
     return true;
   })
-  .help()
   .wrap(120)
   .strict(true);
 
@@ -362,9 +350,9 @@ export interface CliArgsFlood extends CliArgsCommon {
 
 export function getCliArgs(): CliArgsFlood {
   const httpVerb = <HttpVerb>argv.verb;
+  const commonCli = processYargsCommon(argv);
   return {
-    verbosity_count: argv.v,
-    cssBaseUrl: argv.url.map((u) => (u.endsWith("/") ? u : u + "/")),
+    ...commonCli,
     podFilename: argv.filename,
     filenameIndexing: argv.filenameIndexing,
     filenameIndexingStart: argv.filenameIndexingStart,
@@ -398,15 +386,5 @@ export function getCliArgs(): CliArgsFlood {
     ),
     notificationWebhookTarget: argv.notificationWebhookTarget,
     notificationIgnore: argv.notificationIgnore,
-
-    v3: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 3) console.log(message, ...optionalParams);
-    },
-    v2: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 2) console.log(message, ...optionalParams);
-    },
-    v1: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 1) console.log(message, ...optionalParams);
-    },
   };
 }

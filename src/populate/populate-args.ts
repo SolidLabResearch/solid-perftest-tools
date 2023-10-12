@@ -2,27 +2,13 @@
 
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import { CliArgsCommon } from "../common/cli-args";
-
-export enum AccountAction {
-  UseExisting,
-  Create,
-  Auto,
-}
-
-export enum AccountSource {
-  File,
-  Template,
-}
+import {
+  CliArgsCommon,
+  getArgvCommon,
+  processYargsCommon,
+} from "../common/cli-args.js";
 
 export interface CliArgsPopulate extends CliArgsCommon {
-  accountAction: AccountAction;
-  accountSource: AccountSource;
-  accountSourceCount: number;
-  accountSourceFile?: string;
-  accountSourceTemplateUsername: string;
-  accountSourceTemplatePass: string;
-
   fileSize: number;
   fileCount: number;
   addAclFiles: boolean;
@@ -40,71 +26,8 @@ export interface CliArgsPopulate extends CliArgsCommon {
 }
 
 export function getCliArgs(): CliArgsPopulate {
-  let ya = yargs(hideBin(process.argv))
+  let ya = getArgvCommon()
     .usage("Usage: $0 --url <url> --generate-xxx --generate-yyy ...")
-    .option("v", {
-      group: "Base:",
-      type: "count",
-      description:
-        "Verbosity. The more times this option is added, the more messages are printed.",
-      demandOption: false,
-    })
-    .option("url", {
-      group: "CSS Server:",
-      alias: "u",
-      type: "string",
-      description: "Base URL of the CSS",
-      demandOption: true,
-      array: true,
-    })
-    .option("accounts", {
-      group: "Accounts:",
-      type: "string",
-      choices: ["USE_EXISTING", "CREATE", "AUTO"],
-      description:
-        "Do accounts exist already, or do they need to be created? (AUTO will create them if they don't yet exist.)" +
-        " Creating accounts includes creating a webID, and a pod.",
-      // default: "USE_EXISTING",
-      demandOption: true,
-    })
-    .option("account-source", {
-      group: "Accounts:",
-      type: "string",
-      choices: ["FILE", "TEMPLATE"],
-      description:
-        "Where to get the accounts to use or generate? A FILE with json info, or generate from TEMPLATE?",
-      default: "TEMPLATE",
-      demandOption: false,
-    })
-    .option("account-source-count", {
-      group: "Accounts:",
-      type: "number",
-      description: "Number of users/pods to generate/populate",
-      demandOption: false,
-    })
-    .option("account-source-file", {
-      group: "Accounts:",
-      type: "string",
-      description:
-        "The file from which to read JSON account info. Expected JSON: [{username: foo, password: bar}, ...]",
-      demandOption: false,
-    })
-    .option("account-template-username", {
-      group: "Accounts:",
-      type: "string",
-      description:
-        "Template for the account username. The text {{NR}} is replaced by the user number.",
-      default: "user{{NR}}",
-      demandOption: false,
-    })
-    .option("account-template-password", {
-      group: "Accounts:",
-      type: "string",
-      description:
-        "Template for the account password. The text {{NR}} is replaced by the user number.",
-      default: "pass",
-      demandOption: false,
-    })
 
     .option("user-json-out", {
       group: "Generate users:",
@@ -219,17 +142,6 @@ export function getCliArgs(): CliArgsPopulate {
     })
     .help()
     .check((argvc, options) => {
-      if (argvc.url.length < 1) {
-        return "--url should be specified at least once";
-      }
-
-      if (argvc.accountSource == "FILE" && !argvc.accountSourceFile) {
-        return "--account-source FILE requires --account-source-file";
-      }
-      if (argvc.accountSource == "TEMPLATE" && !argvc.accountSourceCount) {
-        return "--account-source FILE requires --account-source-count";
-      }
-
       if (argvc.generateFixedSize && !argvc.userCount) {
         return "--generate-fixed-size requires --user-count";
       }
@@ -259,42 +171,10 @@ export function getCliArgs(): CliArgsPopulate {
     .strict(true);
   // ya = ya.wrap(ya.terminalWidth());
   const argv = ya.parseSync();
-  const accountAction =
-    argv.accounts == "USE_EXISTING"
-      ? AccountAction.UseExisting
-      : argv.accounts == "CREATE"
-      ? AccountAction.Create
-      : argv.accounts == "AUTO"
-      ? AccountAction.Auto
-      : null;
-  const accountSource =
-    argv.accountSource == "TEMPLATE"
-      ? AccountSource.Template
-      : argv.accountSource == "FILE"
-      ? AccountSource.File
-      : null;
-  if (accountAction === null) {
-    //this should not happen
-    throw new Error(`--accounts ${argv.accountAction} is invalid`);
-  }
-  if (accountSource === null) {
-    //this should not happen
-    throw new Error(`--account-source ${argv.accountSource} is invalid`);
-  }
+  const commonCli = processYargsCommon(argv);
 
   return {
-    verbosity_count: argv.v,
-    cssBaseUrl: argv.url.map((u) => (u.endsWith("/") ? u : u + "/")),
-
-    // generateUsers: argv.generateUsers,
-    // userCount: argv.userCount || 1,
-
-    accountAction,
-    accountSource,
-    accountSourceCount: argv.accountSourceCount || 1,
-    accountSourceFile: argv.accountSourceFile,
-    accountSourceTemplateUsername: argv.accountTemplateUsername,
-    accountSourceTemplatePass: argv.accountTemplatePassword,
+    ...commonCli,
 
     fileSize: argv.fileSize || 10,
     fileCount: argv.fileCount || 1,
@@ -315,15 +195,5 @@ export function getCliArgs(): CliArgsPopulate {
           : argv.dir + "/"
         : undefined,
     baseRdfFile: argv.baseRdfFile,
-
-    v3: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 3) console.log(message, ...optionalParams);
-    },
-    v2: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 2) console.log(message, ...optionalParams);
-    },
-    v1: (message?: any, ...optionalParams: any[]) => {
-      if (argv.v >= 1) console.log(message, ...optionalParams);
-    },
   };
 }
