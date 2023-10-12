@@ -1,12 +1,16 @@
 import fs from "fs";
 import { readFile } from "node:fs/promises";
 
-import { addAuthZFile, addAuthZFiles, uploadPodFile } from "./css-upload.js";
-import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { CONTENT_TYPE_BYTE } from "./content-type.js";
-import { CliArgs } from "./css-populate-args.js";
-import { makeDirListing } from "./file-utils.js";
-import { accountEmail, ProvidedAccountInfo } from "./generate-users.js";
+import {
+  addAuthZFile,
+  addAuthZFiles,
+  uploadPodFile,
+} from "../solid/solid-upload.js";
+import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
+import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
+import { CliArgs } from "./populate-args.js";
+import { makeDirListing } from "../utils/file-utils.js";
+import { accountEmail, ProvidedAccountInfo } from "./generate-account-pod.js";
 
 export interface ProvidedAccountAndDirInfo extends ProvidedAccountInfo {
   accountDir: string;

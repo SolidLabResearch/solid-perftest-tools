@@ -1,7 +1,7 @@
-import { createAccount, uploadPodFile } from "./css-upload.js";
-import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { CONTENT_TYPE_TXT } from "./content-type.js";
-import { CliArgs } from "./css-populate-args.js";
+import { createAccount, uploadPodFile } from "../solid/solid-upload.js";
+import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
+import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
+import { CliArgs } from "./populate-args.js";
 
 export function accountEmail(account: string): string {
   return `${account}@example.org`;

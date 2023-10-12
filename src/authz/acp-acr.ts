@@ -1,5 +1,5 @@
-import { AnyFetchType } from "./generic-fetch.js";
-import { ProvidedAccountInfo } from "./generate-users.js";
+import { AnyFetchType } from "../utils/generic-fetch.js";
+import { ProvidedAccountInfo } from "../populate/generate-account-pod.js";
 
 export function makeAcrContent(
   serverDomainName: string,

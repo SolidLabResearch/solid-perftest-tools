@@ -1,11 +1,11 @@
 import fetch from "node-fetch";
-import { ResponseError } from "./error.js";
+import { ResponseError } from "../utils/error.js";
 import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { AnyFetchType } from "./generic-fetch.js";
-import { CONTENT_TYPE_ACL, CONTENT_TYPE_ACR } from "./content-type.js";
-import { makeAclContent } from "./wac-acl.js";
-import { makeAcrContent } from "./acp-acr.js";
-import { CliArgs } from "./css-populate-args.js";
+import { AnyFetchType } from "../utils/generic-fetch.js";
+import { CONTENT_TYPE_ACL, CONTENT_TYPE_ACR } from "../utils/content-type.js";
+import { makeAclContent } from "../authz/wac-acl.js";
+import { makeAcrContent } from "../authz/acp-acr.js";
+import { CliArgs } from "../populate/populate-args.js";
 import {
   AccountApiInfo,
   createAccountPod,
@@ -13,8 +13,8 @@ import {
   createPassword,
   getAccountApiInfo,
   getAccountInfo,
-} from "./css-accounts-api.js";
-import { ProvidedAccountInfo } from "./generate-users.js";
+} from "../populate/css-accounts-api";
+import { ProvidedAccountInfo } from "../populate/generate-account-pod";
 
 export interface CreatedUserInfo {
   IdPType: "CSS"; /// <=v6 or >v7 doesn't matter

@@ -3,17 +3,17 @@ import {
   createDpopHeader,
   generateDpopKeyPair,
 } from "@inrupt/solid-client-authn-core";
-import { ResponseError } from "./error.js";
-import { AnyFetchType } from "./generic-fetch.js";
+import { ResponseError } from "../utils/error.js";
+import { AnyFetchType } from "../utils/generic-fetch.js";
 import { KeyPair } from "@inrupt/solid-client-authn-core/src/authenticatedFetch/dpopUtils";
-import { CliArgs } from "./css-populate-args.js";
+import { CliArgs } from "../populate/populate-args.js";
 import {
   AccountApiInfo,
   accountLogin,
   createClientCredential,
   getAccountApiInfo,
   getAccountInfo,
-} from "./css-accounts-api.js";
+} from "../populate/css-accounts-api.js";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;

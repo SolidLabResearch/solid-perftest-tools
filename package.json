@@ -1,18 +1,18 @@
 {
   "name": "@imec-ilabt/solid-perftest-tools",
-  "version": "4.0.0",
-  "description": "CLI tool to populate and flood solid servers for performance testing purposes.",
+  "version": "1.0.0",
+  "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
-    "solid-populate": "./bin/populate-main.js"
+    "solid-populate": "./bin/populate/populate-main.js"
   },
-  "exports": "./bin/solid-populate.js",
-  "types": "./bin/solid-perftest-tools-lib.d.ts",
+  "exports": "./bin/populate/solid-populate-lib.js",
+  "types": "./bin/populate/solid-populate-lib.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
-    "build": "tsc && chmod u+x ./bin/populate-main.js",
-    "prepublish": "tsc && chmod u+x ./bin/populate-main.js"
+    "build": "tsc && chmod u+x ./bin/populate/populate-main.js",
+    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js"
   },
   "repository": {
     "type": "git",

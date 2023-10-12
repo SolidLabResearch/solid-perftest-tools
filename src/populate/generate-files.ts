@@ -4,17 +4,17 @@ import {
   addAuthZFiles,
   createAccount,
   uploadPodFile,
-} from "./css-upload.js";
-import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { CONTENT_TYPE_BYTE } from "./content-type.js";
+} from "../solid/solid-upload.js";
+import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
+import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
 import {
   convertRdf,
   RDFContentTypeMap,
   RDFExtMap,
   RDFTypeValues,
-} from "./rdf-helpers.js";
-import { CliArgs } from "./css-populate-args.js";
-import { ProvidedAccountInfo } from "./generate-users.js";
+} from "../utils/rdf-helpers.js";
+import { CliArgs } from "./populate-args.js";
+import { ProvidedAccountInfo } from "./generate-account-pod.js";
 
 function generateContent(byteCount: number): ArrayBuffer {
   return crypto.randomBytes(byteCount).buffer; //fetch can handle ArrayBuffer

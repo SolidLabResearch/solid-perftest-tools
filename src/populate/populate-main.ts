@@ -11,15 +11,11 @@ import {
   CreatedUserInfo,
   generateAccountsAndPods,
   ProvidedAccountInfo,
-} from "./generate-users.js";
-import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { AnyFetchType, es6fetch } from "./generic-fetch.js";
+} from "./generate-account-pod.js";
+import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
+import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
-import {
-  AccountAction,
-  AccountSource,
-  getCliArgs,
-} from "./css-populate-args.js";
+import { AccountAction, AccountSource, getCliArgs } from "./populate-args.js";
 import fs from "fs";
 import { readFile } from "node:fs/promises";
 

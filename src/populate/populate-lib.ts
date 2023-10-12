@@ -7,13 +7,13 @@ import {
 import {
   CreatedUserInfo,
   generateAccountsAndPodsFromList,
-} from "./generate-users.js";
-import { AuthFetchCache } from "./auth-fetch-cache.js";
-import { AnyFetchType, es6fetch } from "./generic-fetch.js";
+} from "./generate-account-pod.js";
+import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
+import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
-import { AccountAction, AccountSource, CliArgs } from "./css-populate-args.js";
+import { AccountAction, AccountSource, CliArgs } from "./populate-args.js";
 
-export type { CreatedUserInfo } from "./generate-users.js";
+export type { CreatedUserInfo } from "./generate-account-pod.js";
 export async function populateServersFromDir({
   verbose,
   urlToDirMap,
