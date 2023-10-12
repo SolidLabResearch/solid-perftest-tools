@@ -13,7 +13,7 @@ import {
   RDFExtMap,
   RDFTypeValues,
 } from "../utils/rdf-helpers.js";
-import { CliArgs } from "./populate-args.js";
+import { CliArgsPopulate } from "./populate-args.js";
 import { ProvidedAccountInfo } from "./generate-account-pod.js";
 
 function generateContent(byteCount: number): ArrayBuffer {
@@ -31,7 +31,7 @@ function generateContent(byteCount: number): ArrayBuffer {
 
 export async function generateVariableSizeFiles(
   authFetchCache: AuthFetchCache,
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   providedAccountInfo: ProvidedAccountInfo[],
   addAclFiles: boolean = false,
@@ -104,7 +104,7 @@ export async function generateVariableSizeFiles(
 
 export async function generateFixedSizeFiles(
   authFetchCache: AuthFetchCache,
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   providedAccountInfo: ProvidedAccountInfo[],
   fileCount: number,
@@ -173,7 +173,7 @@ export async function generateFixedSizeFiles(
 export async function generateRdfFiles(
   inputBaseRdfFile: string,
   authFetchCache: AuthFetchCache,
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   providedAccountInfo: ProvidedAccountInfo[],
   addAclFiles: boolean = false,

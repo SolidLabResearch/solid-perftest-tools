@@ -1,7 +1,7 @@
-import { CliArgs } from "./populate-args.js";
 import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
 import { ProvidedAccountInfo } from "./generate-account-pod.js";
+import { CliArgsCommon } from "../common/cli-args.js";
 
 //see
 // https://github.com/CommunitySolidServer/CommunitySolidServer/blob/b02c8dcac1ca20eb61af62a648e0fc68cecc7dd2/documentation/markdown/usage/account/json-api.md
@@ -60,7 +60,7 @@ export interface UserToken {
 }
 
 export async function getAccountApiInfo(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   accountApiUrl: string,
   cookieHeader?: string
 ): Promise<AccountApiInfo | null> {
@@ -95,7 +95,7 @@ export async function getAccountApiInfo(
 }
 
 export async function getAccountInfo(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cookieHeader: string,
   fullAccountApiInfo: AccountApiInfo
 ): Promise<AccountInfo> {
@@ -143,10 +143,10 @@ export async function getAccountInfo(
 }
 
 export async function accountLogin(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   accountApiInfo: AccountApiInfo,
   email: string,
-  password: string = "password"
+  password: string
 ): Promise<string> {
   cli.v2("Logging in...");
   const loginEndpoint = accountApiInfo.controls?.password?.login;
@@ -192,7 +192,7 @@ export async function accountLogin(
 }
 
 export async function createClientCredential(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cookieHeader: string,
   webId: string,
   account: string,
@@ -248,7 +248,7 @@ export async function createClientCredential(
 }
 
 export async function createEmptyAccount(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   accountInfo: ProvidedAccountInfo,
   basicAccountApiInfo: AccountApiInfo
 ): Promise<string | null> {
@@ -321,7 +321,7 @@ export async function createEmptyAccount(
 }
 
 export async function createPassword(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cookieHeader: string,
   account: string,
   email: string,
@@ -382,7 +382,7 @@ export async function createPassword(
 }
 
 export async function createAccountPod(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cookieHeader: string,
   podName: string,
   fullAccountApiInfo: AccountApiInfo

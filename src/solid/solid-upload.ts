@@ -5,7 +5,7 @@ import { AnyFetchType } from "../utils/generic-fetch.js";
 import { CONTENT_TYPE_ACL, CONTENT_TYPE_ACR } from "../utils/content-type.js";
 import { makeAclContent } from "../authz/wac-acl.js";
 import { makeAcrContent } from "../authz/acp-acr.js";
-import { CliArgs } from "../populate/populate-args.js";
+import { CliArgsPopulate } from "../populate/populate-args.js";
 import {
   AccountApiInfo,
   createAccountPod,
@@ -35,7 +35,7 @@ export interface CreatedUserInfo {
  * @param {string} accountInfo The username/password used to create the account, and the podName (same value as you would give in the register form online)
  */
 export async function createAccount(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   accountInfo: ProvidedAccountInfo
@@ -101,7 +101,7 @@ export async function createAccount(
 }
 
 export async function createPodAccountsApi1(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   accountInfo: ProvidedAccountInfo
@@ -176,7 +176,7 @@ export async function createPodAccountsApi1(
 }
 
 export async function createPodAccountsApi6(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   accountInfo: ProvidedAccountInfo
@@ -257,7 +257,7 @@ export async function createPodAccountsApi6(
  * @param {string} basicAccountApiInfo AccountApiInfo (not logged in)
  */
 export async function createPodAccountsApi7(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   accountInfo: ProvidedAccountInfo,
@@ -336,7 +336,7 @@ export async function createPodAccountsApi7(
 }
 
 export async function uploadPodFile(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   accountInfo: ProvidedAccountInfo,
   fileContent: string | Buffer,
@@ -443,7 +443,7 @@ function lastDotToSemi(input: string): string {
 // }
 
 export async function addAuthZFiles(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   accountInfo: ProvidedAccountInfo,
   authFetch: AnyFetchType,
@@ -515,7 +515,7 @@ export async function addAuthZFiles(
 }
 
 export async function addAuthZFile(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   accountInfo: ProvidedAccountInfo,
   authFetch: AnyFetchType,

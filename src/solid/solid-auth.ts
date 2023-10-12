@@ -5,8 +5,8 @@ import {
 } from "@inrupt/solid-client-authn-core";
 import { ResponseError } from "../utils/error.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
+import { DurationCounter } from "../utils/duration-counter.js";
 import { KeyPair } from "@inrupt/solid-client-authn-core/src/authenticatedFetch/dpopUtils";
-import { CliArgs } from "../populate/populate-args.js";
 import {
   AccountApiInfo,
   accountLogin,
@@ -14,6 +14,7 @@ import {
   getAccountApiInfo,
   getAccountInfo,
 } from "../populate/css-accounts-api.js";
+import { CliArgsCommon } from "../common/cli-args.js";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;
@@ -29,11 +30,12 @@ export interface AccessToken {
   expire: Date;
 }
 export async function createUserToken(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cssBaseUrl: string,
   username: string,
   password: string,
-  fetcher: AnyFetchType = fetch
+  fetcher: AnyFetchType = fetch,
+  durationCounter: DurationCounter | null = null
 ): Promise<UserToken> {
   cli.v2("Creating Token (client-credential)...");
 
@@ -42,26 +44,39 @@ export async function createUserToken(
     cli,
     `${cssBaseUrl}.account/`
   );
-  if (basicAccountApiInfo && basicAccountApiInfo?.controls?.account?.create) {
-    cli.v2(`Account API confirms v7`);
+  const startTime = new Date().getTime();
+  try {
+    if (basicAccountApiInfo && basicAccountApiInfo?.controls?.account?.create) {
+      cli.v2(`Account API confirms v7`);
 
-    return await createUserTokenv7(
+      return await createUserTokenv7(
+        cli,
+        username,
+        password,
+        fetcher,
+        basicAccountApiInfo
+      );
+    } else {
+      cli.v2(`Account API is not v7`);
+    }
+
+    cli.v2(`Assuming account API v6`);
+    return await createUserTokenv6(
       cli,
+      cssBaseUrl,
       username,
       password,
-      fetcher,
-      basicAccountApiInfo
+      fetcher
     );
-  } else {
-    cli.v2(`Account API is not v7`);
+  } finally {
+    if (durationCounter !== null) {
+      durationCounter.addDuration(new Date().getTime() - startTime);
+    }
   }
-
-  cli.v2(`Assuming account API v6`);
-  return await createUserTokenv6(cli, cssBaseUrl, username, password, fetcher);
 }
 
 export async function createUserTokenv6(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   cssBaseUrl: string,
   account: string,
   password: string,
@@ -106,7 +121,7 @@ export async function createUserTokenv6(
 }
 
 export async function createUserTokenv7(
-  cli: CliArgs,
+  cli: CliArgsCommon,
   account: string,
   password: string,
   fetcher: AnyFetchType = fetch,
@@ -163,20 +178,27 @@ export function stillUsableAccessToken(
   return expire > now && expire - now > deadline_s * 1000;
 }
 
-export async function getUserAuthFetch(
-  cli: CliArgs,
+export async function getUsableAccessToken(
+  cli: CliArgsCommon,
   cssBaseUrl: string,
   username: string,
   token: UserToken,
   fetcher: AnyFetchType = fetch,
-  accessToken: AccessToken | null = null
-): Promise<[AnyFetchType, AccessToken]> {
+  accessTokenDurationCounter: DurationCounter | null = null,
+  fetchDurationCounter: DurationCounter | null = null,
+  generateDpopKeyPairDurationCounter: DurationCounter | null = null,
+  accessToken: AccessToken | null = null,
+  ensureAuthExpirationS: number = 30
+): Promise<AccessToken> {
   //see https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/client-credentials.md
   const { id, secret } = token;
 
   let accessTokenDurationStart = null;
   try {
-    if (accessToken === null || !stillUsableAccessToken(accessToken)) {
+    if (
+      accessToken === null ||
+      !stillUsableAccessToken(accessToken, ensureAuthExpirationS)
+    ) {
       const generateDpopKeyPairDurationStart = new Date().getTime();
       const dpopKeyPair = await generateDpopKeyPair();
       const authString = `${encodeURIComponent(id)}:${encodeURIComponent(
@@ -186,6 +208,11 @@ export async function getUserAuthFetch(
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       const url = `${cssBaseUrl}.oidc/token`; //ideally, fetch this from token_endpoint in .well-known/openid-configuration
+      if (generateDpopKeyPairDurationCounter !== null) {
+        generateDpopKeyPairDurationCounter.addDuration(
+          new Date().getTime() - generateDpopKeyPairDurationStart
+        );
+      }
 
       accessTokenDurationStart = new Date().getTime();
       const res = await fetcher(url, {
@@ -201,6 +228,15 @@ export async function getUserAuthFetch(
 
       const body = await res.text();
       clearTimeout(timeoutId);
+      if (
+        accessTokenDurationCounter !== null &&
+        accessTokenDurationStart !== null
+      ) {
+        accessTokenDurationCounter.addDuration(
+          new Date().getTime() - accessTokenDurationStart
+        );
+        accessTokenDurationStart = null;
+      }
 
       if (!res.ok) {
         console.error(
@@ -220,20 +256,121 @@ export async function getUserAuthFetch(
         expire: expire,
         dpopKeyPair: dpopKeyPair,
       };
+      cli.v3(
+        `Created Access Token using CSS token: \nusername=${username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`
+      );
+
+      if (!stillUsableAccessToken(accessToken, ensureAuthExpirationS)) {
+        const msg =
+          `AccessToken was refreshed, but is not valid long enough.` +
+          `Must be valid for ${ensureAuthExpirationS}s, but is valid for ${expiresIn}s`;
+        console.error(msg);
+        throw new Error(msg);
+      }
     }
+
+    return accessToken;
   } catch (error: any) {
     if (error.name === "AbortError") {
       console.error(`Fetching access token took too long: aborted`);
     }
     throw error;
+  } finally {
+    if (
+      accessTokenDurationCounter !== null &&
+      accessTokenDurationStart !== null
+    ) {
+      accessTokenDurationCounter.addDuration(
+        new Date().getTime() - accessTokenDurationStart
+      );
+    }
   }
+}
 
-  const authFetch: AnyFetchType = await buildAuthenticatedFetch(
-    // @ts-ignore
+export async function getUserAuthFetch(
+  cli: CliArgsCommon,
+  cssBaseUrl: string,
+  account: string,
+  token: UserToken,
+  fetcher: AnyFetchType = fetch,
+  accessTokenDurationCounter: DurationCounter | null = null,
+  fetchDurationCounter: DurationCounter | null = null,
+  generateDpopKeyPairDurationCounter: DurationCounter | null = null,
+  accessToken: AccessToken | null = null,
+  ensureAuthExpirationS: number = 30
+): Promise<[AnyFetchType, AccessToken]> {
+  accessToken = await getUsableAccessToken(
+    cli,
+    cssBaseUrl,
+    account,
+    token,
     fetcher,
-    accessToken.token,
-    { dpopKey: accessToken.dpopKeyPair }
+    accessTokenDurationCounter,
+    fetchDurationCounter,
+    generateDpopKeyPairDurationCounter,
+    accessToken,
+    ensureAuthExpirationS
   );
 
-  return [authFetch, accessToken];
+  const fetchDurationStart = new Date().getTime();
+  try {
+    const authFetch: AnyFetchType = await buildAuthenticatedFetch(
+      // @ts-ignore
+      fetcher,
+      accessToken.token,
+      { dpopKey: accessToken.dpopKeyPair }
+    );
+
+    return [authFetch, accessToken];
+  } finally {
+    if (fetchDurationCounter !== null) {
+      fetchDurationCounter.addDuration(
+        new Date().getTime() - fetchDurationStart
+      );
+    }
+  }
+}
+
+export interface AuthHeaders {
+  Authorization: string;
+  DPoP: string;
+}
+
+export async function getFetchAuthHeaders(
+  cli: CliArgsCommon,
+  cssBaseUrl: string,
+  username: string,
+  method: "get" | "put" | "post" | "patch" | "delete",
+  token: UserToken,
+  fetcher: AnyFetchType = fetch,
+  accessTokenDurationCounter: DurationCounter | null = null,
+  fetchDurationCounter: DurationCounter | null = null,
+  generateDpopKeyPairDurationCounter: DurationCounter | null = null,
+  accessToken: AccessToken | null = null,
+  ensureAuthExpirationS: number = 30
+): Promise<[AuthHeaders, AccessToken]> {
+  accessToken = await getUsableAccessToken(
+    cli,
+    cssBaseUrl,
+    username,
+    token,
+    fetcher,
+    accessTokenDurationCounter,
+    fetchDurationCounter,
+    generateDpopKeyPairDurationCounter,
+    accessToken,
+    ensureAuthExpirationS
+  );
+  const dpop = await createDpopHeader(
+    cssBaseUrl,
+    method,
+    accessToken.dpopKeyPair
+  );
+  return [
+    {
+      Authorization: `DPoP ${accessToken.token}`,
+      DPoP: dpop,
+    },
+    accessToken,
+  ];
 }

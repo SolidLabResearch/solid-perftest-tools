@@ -1,20 +1,8 @@
 import { createAccount, uploadPodFile } from "../solid/solid-upload.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
-import { CliArgs } from "./populate-args.js";
-
-export function accountEmail(account: string): string {
-  return `${account}@example.org`;
-}
-
-export interface ProvidedAccountInfo {
-  index: number;
-  username: string;
-  password: string;
-  podName: string; //defaults to username
-  email: string; //default based on username
-  // webID?: string;  //not (yet?) relevant
-}
+import { CliArgsPopulate } from "./populate-args.js";
+import { ProvidedAccountInfo } from "../utils/account.js";
 
 export interface CreatedUserInfo {
   IdPType: "CSS"; /// <=v6 or >v7 doesn't matter
@@ -26,7 +14,7 @@ export interface CreatedUserInfo {
 }
 
 export async function generateAccountsAndPods(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   providedAccountInfo: ProvidedAccountInfo[],
@@ -42,7 +30,7 @@ export async function generateAccountsAndPods(
 }
 
 export async function generateAccountsAndPodsFromList(
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   authFetchCache: AuthFetchCache,
   providedAccountInfo: ProvidedAccountInfo[],

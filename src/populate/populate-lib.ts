@@ -11,7 +11,11 @@ import {
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
-import { AccountAction, AccountSource, CliArgs } from "./populate-args.js";
+import {
+  AccountAction,
+  AccountSource,
+  CliArgsPopulate,
+} from "./populate-args.js";
 
 export type { CreatedUserInfo } from "./generate-account-pod.js";
 export async function populateServersFromDir({
@@ -24,7 +28,7 @@ export async function populateServersFromDir({
   authorization: "WAC" | "ACP" | undefined;
 }): Promise<CreatedUserInfo[]> {
   //just hack together some CliArgs for consistency
-  const cli: CliArgs = {
+  const cli: CliArgsPopulate = {
     verbosity_count: verbose ? 1 : 0,
     cssBaseUrl: Object.keys(urlToDirMap).map((u) =>
       u.endsWith("/") ? u : u + "/"
@@ -64,8 +68,10 @@ export async function populateServersFromDir({
   const createdUsersInfo: CreatedUserInfo[] = [];
 
   for (const [cssBaseUrl, dir] of Object.entries(urlToDirMap)) {
+    const accounts = await findAccountsFromDir(dir);
     const authFetchCache = new AuthFetchCache(
       cli,
+      accounts,
       cssBaseUrl,
       true,
       "all",
@@ -73,7 +79,6 @@ export async function populateServersFromDir({
     );
 
     if (cli.accountAction !== AccountAction.UseExisting) {
-      const accounts = await findAccountsFromDir(dir);
       console.log(
         `Will generate user & pod for server ${cssBaseUrl}: ${JSON.stringify(
           accounts,

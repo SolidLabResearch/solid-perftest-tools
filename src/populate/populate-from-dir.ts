@@ -8,9 +8,9 @@ import {
 } from "../solid/solid-upload.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
-import { CliArgs } from "./populate-args.js";
+import { CliArgsPopulate } from "./populate-args.js";
 import { makeDirListing } from "../utils/file-utils.js";
-import { accountEmail, ProvidedAccountInfo } from "./generate-account-pod.js";
+import { accountEmail, ProvidedAccountInfo } from "../utils/account.js";
 
 export interface ProvidedAccountAndDirInfo extends ProvidedAccountInfo {
   accountDir: string;
@@ -51,7 +51,7 @@ export async function findAccountsFromDir(
  */
 export async function populatePodsFromDir(
   authFetchCache: AuthFetchCache,
-  cli: CliArgs,
+  cli: CliArgsPopulate,
   cssBaseUrl: string,
   generatedDataBaseDir: string,
   addAclFiles: boolean = false,

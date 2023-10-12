@@ -2,6 +2,7 @@
 
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
+import { CliArgsCommon } from "../common/cli-args";
 
 export enum AccountAction {
   UseExisting,
@@ -14,10 +15,7 @@ export enum AccountSource {
   Template,
 }
 
-export interface CliArgs {
-  verbosity_count: number;
-  cssBaseUrl: string[];
-
+export interface CliArgsPopulate extends CliArgsCommon {
   accountAction: AccountAction;
   accountSource: AccountSource;
   accountSourceCount: number;
@@ -39,13 +37,9 @@ export interface CliArgs {
   generateFromDir: boolean;
   generatedDataBaseDir?: string;
   baseRdfFile?: string;
-
-  v1: (message?: any, ...optionalParams: any[]) => void;
-  v2: (message?: any, ...optionalParams: any[]) => void;
-  v3: (message?: any, ...optionalParams: any[]) => void;
 }
 
-export function getCliArgs(): CliArgs {
+export function getCliArgs(): CliArgsPopulate {
   let ya = yargs(hideBin(process.argv))
     .usage("Usage: $0 --url <url> --generate-xxx --generate-yyy ...")
     .option("v", {
