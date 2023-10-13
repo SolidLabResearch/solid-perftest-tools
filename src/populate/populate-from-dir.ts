@@ -10,7 +10,8 @@ import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
 import { CliArgsPopulate } from "./populate-args.js";
 import { makeDirListing } from "../utils/file-utils.js";
-import { accountEmail, ProvidedAccountInfo } from "../utils/account.js";
+import { accountEmail, ProvidedAccountInfo } from "../common/account.js";
+import { SolidServerInfo } from "../common/cli-args";
 
 export interface ProvidedAccountAndDirInfo extends ProvidedAccountInfo {
   accountDir: string;
@@ -44,7 +45,7 @@ export async function findAccountsFromDir(
  *
  * @param authFetchCache
  * @param cli
- * @param cssBaseUrl the URL for the CCS server to populate
+ * @param server the Solid server to populate
  * @param generatedDataBaseDir a dir with subdirs per pod for the server to populate. (= NOT a dir with subdirs per server!)
  * @param addAclFiles
  * @param addAcrFiles
@@ -52,7 +53,6 @@ export async function findAccountsFromDir(
 export async function populatePodsFromDir(
   authFetchCache: AuthFetchCache,
   cli: CliArgsPopulate,
-  cssBaseUrl: string,
   generatedDataBaseDir: string,
   addAclFiles: boolean = false,
   addAcrFiles: boolean = false
@@ -63,7 +63,7 @@ export async function populatePodsFromDir(
   //  in these subdirs, are the files to be stored in these pod
 
   console.debug(
-    `populatePodsFromDir(cssBaseUrl=${cssBaseUrl}, generatedDataBaseDir=${generatedDataBaseDir}, addAclFiles=${addAclFiles}, addAcrFiles=${addAcrFiles})`
+    `populatePodsFromDir(server.baseUrl=${server.baseUrl}, generatedDataBaseDir=${generatedDataBaseDir}, addAclFiles=${addAclFiles}, addAcrFiles=${addAcrFiles})`
   );
 
   const dirListing = await makeDirListing(generatedDataBaseDir, false);
@@ -120,7 +120,6 @@ export async function populatePodsFromDir(
       const fileContent = await readFile(podFilePath, { encoding: "utf8" });
       await uploadPodFile(
         cli,
-        cssBaseUrl,
         ai,
         fileContent,
         filePathInPod,
@@ -139,7 +138,7 @@ export async function populatePodsFromDir(
       for (const authZType of authZTypes) {
         await addAuthZFile(
           cli,
-          cssBaseUrl,
+          server,
           ai,
           authFetch,
           fileDirInPod,

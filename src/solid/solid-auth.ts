@@ -15,6 +15,7 @@ import {
   getAccountInfo,
 } from "../populate/css-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
+import { MachineLoginMethod, PodAndOwnerInfo } from "../common/account";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;
@@ -31,9 +32,7 @@ export interface AccessToken {
 }
 export async function createUserToken(
   cli: CliArgsCommon,
-  cssBaseUrl: string,
-  username: string,
-  password: string,
+  pod: PodAndOwnerInfo,
   fetcher: AnyFetchType = fetch,
   durationCounter: DurationCounter | null = null
 ): Promise<UserToken> {
@@ -42,7 +41,8 @@ export async function createUserToken(
   cli.v2("Checking Account API info...");
   const basicAccountApiInfo = await getAccountApiInfo(
     cli,
-    `${cssBaseUrl}.account/`
+    // `${pod.baseUrl}.account/`
+    `${pod.machineLoginUri}`
   );
   const startTime = new Date().getTime();
   try {
@@ -51,8 +51,8 @@ export async function createUserToken(
 
       return await createUserTokenv7(
         cli,
-        username,
-        password,
+        pod.username,
+        pod.password,
         fetcher,
         basicAccountApiInfo
       );
@@ -61,13 +61,7 @@ export async function createUserToken(
     }
 
     cli.v2(`Assuming account API v6`);
-    return await createUserTokenv6(
-      cli,
-      cssBaseUrl,
-      username,
-      password,
-      fetcher
-    );
+    return await createUserTokenv6(cli, pod, fetcher);
   } finally {
     if (durationCounter !== null) {
       durationCounter.addDuration(new Date().getTime() - startTime);
@@ -77,9 +71,7 @@ export async function createUserToken(
 
 export async function createUserTokenv6(
   cli: CliArgsCommon,
-  cssBaseUrl: string,
-  account: string,
-  password: string,
+  pod: PodAndOwnerInfo,
   fetcher: AnyFetchType = fetch
 ): Promise<UserToken> {
   //see https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/client-credentials.md
@@ -87,14 +79,22 @@ export async function createUserTokenv6(
   const timeoutId = setTimeout(() => controller.abort(), 5000);
   let res = null;
   let body = null;
+  if (
+    pod.machineLoginMethod === MachineLoginMethod.NONE ||
+    !pod.machineLoginUri
+  ) {
+    throw new Error(
+      'There is no machine login method (like "client-credential" known for the pod)'
+    );
+  }
   try {
-    res = await fetcher(`${cssBaseUrl}idp/credentials/`, {
+    res = await fetcher(pod.machineLoginUri, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        name: `token-css-populate-${account}`,
-        email: accountEmail(account),
-        password: password,
+        name: `token-css-populate-${pod.username}`,
+        email: pod.email,
+        password: pod.password,
       }),
       signal: controller.signal,
     });
@@ -110,7 +110,7 @@ export async function createUserTokenv6(
   }
   if (!res || !res.ok) {
     console.error(
-      `${res.status} - Creating token for ${account} failed:`,
+      `${res?.status} - Creating token for ${pod.username} failed:`,
       body
     );
     throw new ResponseError(res, body);
@@ -180,8 +180,7 @@ export function stillUsableAccessToken(
 
 export async function getUsableAccessToken(
   cli: CliArgsCommon,
-  cssBaseUrl: string,
-  username: string,
+  pod: PodAndOwnerInfo,
   token: UserToken,
   fetcher: AnyFetchType = fetch,
   accessTokenDurationCounter: DurationCounter | null = null,
@@ -207,7 +206,7 @@ export async function getUsableAccessToken(
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const url = `${cssBaseUrl}.oidc/token`; //ideally, fetch this from token_endpoint in .well-known/openid-configuration
+      const url = `${pod.oidcIssuer}.oidc/token`; //ideally, fetch this from token_endpoint in .well-known/openid-configuration
       if (generateDpopKeyPairDurationCounter !== null) {
         generateDpopKeyPairDurationCounter.addDuration(
           new Date().getTime() - generateDpopKeyPairDurationStart
@@ -240,7 +239,7 @@ export async function getUsableAccessToken(
 
       if (!res.ok) {
         console.error(
-          `${res.status} - Creating access token for ${username} failed:`
+          `${res.status} - Creating access token for ${pod.username} failed:`
         );
         console.error(body);
         throw new ResponseError(res, body);
@@ -257,7 +256,7 @@ export async function getUsableAccessToken(
         dpopKeyPair: dpopKeyPair,
       };
       cli.v3(
-        `Created Access Token using CSS token: \nusername=${username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`
+        `Created Access Token using CSS token: \nusername=${pod.username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`
       );
 
       if (!stillUsableAccessToken(accessToken, ensureAuthExpirationS)) {
@@ -289,8 +288,7 @@ export async function getUsableAccessToken(
 
 export async function getUserAuthFetch(
   cli: CliArgsCommon,
-  cssBaseUrl: string,
-  account: string,
+  pod: PodAndOwnerInfo,
   token: UserToken,
   fetcher: AnyFetchType = fetch,
   accessTokenDurationCounter: DurationCounter | null = null,
@@ -301,8 +299,7 @@ export async function getUserAuthFetch(
 ): Promise<[AnyFetchType, AccessToken]> {
   accessToken = await getUsableAccessToken(
     cli,
-    cssBaseUrl,
-    account,
+    pod,
     token,
     fetcher,
     accessTokenDurationCounter,
@@ -338,8 +335,7 @@ export interface AuthHeaders {
 
 export async function getFetchAuthHeaders(
   cli: CliArgsCommon,
-  cssBaseUrl: string,
-  username: string,
+  pod: PodAndOwnerInfo,
   method: "get" | "put" | "post" | "patch" | "delete",
   token: UserToken,
   fetcher: AnyFetchType = fetch,
@@ -351,8 +347,7 @@ export async function getFetchAuthHeaders(
 ): Promise<[AuthHeaders, AccessToken]> {
   accessToken = await getUsableAccessToken(
     cli,
-    cssBaseUrl,
-    username,
+    pod,
     token,
     fetcher,
     accessTokenDurationCounter,
@@ -362,7 +357,7 @@ export async function getFetchAuthHeaders(
     ensureAuthExpirationS
   );
   const dpop = await createDpopHeader(
-    cssBaseUrl,
+    pod.oidcIssuer,
     method,
     accessToken.dpopKeyPair
   );

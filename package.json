@@ -4,15 +4,17 @@
   "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
-    "solid-populate": "./bin/populate/populate-main.js"
+    "solid-populate": "./bin/populate/populate-main.js",
+    "solid-flood": "./bin/flood/flood.js",
+    "solid-flood-worker": "./bin/flood/flood-worker.js"
   },
   "exports": "./bin/populate/solid-populate-lib.js",
   "types": "./bin/populate/solid-populate-lib.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
-    "build": "tsc && chmod u+x ./bin/populate/populate-main.js",
-    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js"
+    "build": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js",
+    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js"
   },
   "repository": {
     "type": "git",

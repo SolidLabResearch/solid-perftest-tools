@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
-import { ProvidedAccountInfo } from "./generate-account-pod.js";
 import { CliArgsCommon } from "../common/cli-args.js";
+import { AccountCreateOrder } from "../common/account";
 
 //see
 // https://github.com/CommunitySolidServer/CommunitySolidServer/blob/b02c8dcac1ca20eb61af62a648e0fc68cecc7dd2/documentation/markdown/usage/account/json-api.md
@@ -249,7 +249,7 @@ export async function createClientCredential(
 
 export async function createEmptyAccount(
   cli: CliArgsCommon,
-  accountInfo: ProvidedAccountInfo,
+  accountInfo: AccountCreateOrder,
   basicAccountApiInfo: AccountApiInfo
 ): Promise<string | null> {
   const accountCreateEndpoint = basicAccountApiInfo?.controls?.account?.create;

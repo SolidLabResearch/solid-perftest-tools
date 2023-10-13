@@ -7,11 +7,7 @@ import {
 } from "../solid/auth-fetch-cache.js";
 import { fromNow } from "../utils/time-helpers.js";
 import { once } from "events";
-import {
-  AnyFetchResponseType,
-  AnyFetchType,
-  es6fetch,
-} from "../utils/generic-fetch.js";
+import { AnyFetchResponseType, AnyFetchType } from "../utils/generic-fetch.js";
 import { DurationCounter } from "../utils/duration-counter.js";
 import * as fs from "fs";
 import { promises as afs } from "fs";
@@ -34,7 +30,7 @@ import { pipeline } from "node:stream/promises";
 import variable = DataFactory.variable;
 import literal = DataFactory.literal;
 import * as RDF from "rdf-js";
-import { ProvidedAccountInfo } from "../populate/generate-account-pod";
+import { ProvidedAccountInfo } from "../populate/generate-account-pod.js";
 import {
   stepNotificationsConnectWebsockets,
   stepNotificationsDelete,
@@ -136,7 +132,6 @@ export async function fetchPodFile(
   httpVerb: HttpVerb,
   filenameIndexing: boolean,
   fetchIndex: number,
-  cssBaseUrl: string,
   mustUpload: boolean,
   uploadData?: Promise<ArrayBuffer>
 ) {
@@ -1055,36 +1050,30 @@ export async function runNamedStep(
         await stepLoadAuthCache(
           authFetchCache,
           cli.authCacheFile,
-          cli.userCount
+          cli.podCount
         );
       }
       break;
     }
     case "fillAC": {
       await authFetchCache.preCache(
-        cli.userCount,
+        cli.podCount,
         cli.ensureAuthExpirationS + 30
       );
       console.log(`Auth cache now has '${authFetchCache.toCountString()}'`);
       break;
     }
     case "validateAC": {
-      authFetchCache.validate(cli.userCount, cli.ensureAuthExpirationS);
+      authFetchCache.validate(cli.podCount, cli.ensureAuthExpirationS);
       break;
     }
     case "testRequest": {
-      await authFetchCache.test(
-        1,
-        cli.cssBaseUrl[0],
-        cli.podFilename,
-        cli.fetchTimeoutMs
-      );
+      await authFetchCache.test(1, cli.podFilename, cli.fetchTimeoutMs);
       break;
     }
     case "testRequests": {
       await authFetchCache.test(
-        cli.userCount,
-        cli.cssBaseUrl[0],
+        cli.podCount,
         cli.podFilename,
         cli.fetchTimeoutMs
       );

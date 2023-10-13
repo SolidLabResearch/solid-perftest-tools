@@ -2,28 +2,15 @@ import { createAccount, uploadPodFile } from "../solid/solid-upload.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
 import { CliArgsPopulate } from "./populate-args.js";
-import { ProvidedAccountInfo } from "../utils/account.js";
-
-export interface CreatedUserInfo {
-  IdPType: "CSS"; /// <=v6 or >v7 doesn't matter
-  serverBaseURL: string;
-  webID: string;
-  podRoot: string;
-  username: string;
-  password: string;
-}
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
 
 export async function generateAccountsAndPods(
   cli: CliArgsPopulate,
-  cssBaseUrl: string,
-  authFetchCache: AuthFetchCache,
-  providedAccountInfo: ProvidedAccountInfo[],
-  createdUserArr: CreatedUserInfo[]
+  providedAccountInfo: AccountCreateOrder[],
+  createdUserArr: PodAndOwnerInfo[]
 ) {
   await generateAccountsAndPodsFromList(
     cli,
-    cssBaseUrl,
-    authFetchCache,
     providedAccountInfo,
     createdUserArr
   );
@@ -31,33 +18,14 @@ export async function generateAccountsAndPods(
 
 export async function generateAccountsAndPodsFromList(
   cli: CliArgsPopulate,
-  cssBaseUrl: string,
-  authFetchCache: AuthFetchCache,
-  providedAccountInfo: ProvidedAccountInfo[],
-  createdUserArr: CreatedUserInfo[]
+  accountCreateOrders: AccountCreateOrder[],
+  createdUserArr: PodAndOwnerInfo[]
 ) {
   let i = 0;
-  for (const accountInfo of providedAccountInfo) {
-    const createdUserInfo = await createAccount(
-      cli,
-      cssBaseUrl,
-      authFetchCache,
-      accountInfo
-    );
+  for (const accountCreateOrder of accountCreateOrders) {
+    const createdUserInfo = await createAccount(cli, accountCreateOrder);
     if (createdUserInfo) createdUserArr.push(createdUserInfo);
 
-    const authFetch = await authFetchCache.getAuthFetcher(accountInfo);
-    // await writePodFileCheat(account, "DUMMY DATA FOR "+account, localPodDir, 'dummy.txt');
-    await uploadPodFile(
-      cli,
-      cssBaseUrl,
-      accountInfo,
-      "DUMMY DATA FOR " + accountInfo.username,
-      "dummy.txt",
-      authFetch,
-      CONTENT_TYPE_TXT,
-      i < 2
-    );
     i += 1;
   }
 }

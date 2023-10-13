@@ -6,20 +6,16 @@ import {
   stillUsableAccessToken,
   UserToken,
 } from "./solid-auth.js";
-import {
-  AnyFetchResponseType,
-  AnyFetchType,
-  es6fetch,
-} from "../utils/generic-fetch.js";
-import { ProvidedAccountInfo } from "../utils/account.js";
+import { AnyFetchResponseType, AnyFetchType } from "../utils/generic-fetch.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import { DurationCounter } from "../utils/duration-counter.js";
 import { promises as fs } from "fs";
 import * as jose from "jose";
 import { fromNow } from "../utils/time-helpers.js";
+import nodeFetch from "node-fetch";
+import { PodAndOwnerInfo } from "../common/account.js";
 
 export interface AuthFetchCacheStats {
-  cssBaseUrl: string;
   authenticateCache: "none" | "token" | "all";
   authenticate: boolean;
   lenCssTokensByUser: number;
@@ -49,11 +45,10 @@ interface DumpType {
 
 export class AuthFetchCache {
   cli: CliArgsCommon;
-  cssBaseUrl: string;
   authenticateCache: "none" | "token" | "all" = "none";
   authenticate: boolean = false;
 
-  accountInfos: Array<ProvidedAccountInfo> = [];
+  accountInfos: Array<PodAndOwnerInfo> = [];
   cssTokensByUser: Array<UserToken | null> = [];
   authAccessTokenByUser: Array<AccessToken | null> = [];
   authFetchersByUser: Array<AnyFetchType | null> = [];
@@ -72,18 +67,15 @@ export class AuthFetchCache {
 
   constructor(
     cli: CliArgsCommon,
-    accountInfos: Array<ProvidedAccountInfo>,
-    cssBaseUrl: string, //there might be multiple css servers, this cache is for one specific server
+    accountInfos: Array<PodAndOwnerInfo>,
     authenticate: boolean,
-    authenticateCache: "none" | "token" | "all",
-    fetcher: AnyFetchType = es6fetch
+    authenticateCache: "none" | "token" | "all"
   ) {
     this.cli = cli;
     this.accountInfos = accountInfos;
-    this.cssBaseUrl = cssBaseUrl;
     this.authenticate = authenticate;
     this.authenticateCache = authenticateCache;
-    this.fetcher = fetcher;
+    this.fetcher = nodeFetch; //cli.fetcher TODO ? nodeFetch : es6fetch;;
   }
 
   expireAccessToken(userId: number) {
@@ -95,40 +87,26 @@ export class AuthFetchCache {
     }
   }
 
-  async getAuthFetcher(
-    accountInfo: ProvidedAccountInfo
-  ): Promise<AnyFetchType> {
-    console.assert(accountInfo.index < this.accountInfos.length);
-    return this.getAuthFetcherInternal(
-      accountInfo.index,
-      accountInfo.username,
-      accountInfo.password
-    );
-  }
-
-  async getAuthFetcherInternal(
-    accountIndex: number,
-    username: string,
-    password: string
-  ): Promise<AnyFetchType> {
+  async getAuthFetcher(pod: PodAndOwnerInfo): Promise<AnyFetchType> {
+    console.assert(pod.index < this.accountInfos.length);
     this.useCount++;
     if (!this.authenticate) {
       return this.fetcher;
     }
-    this.expireAccessToken(accountIndex);
+    this.expireAccessToken(pod.index);
     let userToken = null;
     let accessToken = null;
     let theFetch = null;
     if (this.authenticateCache !== "none") {
-      if (this.cssTokensByUser[accountIndex]) {
-        userToken = this.cssTokensByUser[accountIndex];
+      if (this.cssTokensByUser[pod.index]) {
+        userToken = this.cssTokensByUser[pod.index];
       }
       if (this.authenticateCache === "all") {
-        if (this.authAccessTokenByUser[accountIndex]) {
-          accessToken = this.authAccessTokenByUser[accountIndex];
+        if (this.authAccessTokenByUser[pod.index]) {
+          accessToken = this.authAccessTokenByUser[pod.index];
         }
-        if (this.authFetchersByUser[accountIndex]) {
-          theFetch = this.authFetchersByUser[accountIndex];
+        if (this.authFetchersByUser[pod.index]) {
+          theFetch = this.authFetchersByUser[pod.index];
         }
       }
     }
@@ -136,9 +114,7 @@ export class AuthFetchCache {
     if (!userToken) {
       userToken = await createUserToken(
         this.cli,
-        this.cssBaseUrl,
-        username,
-        password,
+        pod,
         this.fetcher,
         this.tokenFetchDuration
       );
@@ -147,8 +123,7 @@ export class AuthFetchCache {
     if (!theFetch) {
       [theFetch, accessToken] = await getUserAuthFetch(
         this.cli,
-        this.cssBaseUrl,
-        username,
+        pod,
         userToken,
         this.fetcher,
         this.authAccessTokenDuration,
@@ -159,23 +134,20 @@ export class AuthFetchCache {
       this.authFetchCount++;
     }
 
-    if (
-      this.authenticateCache !== "none" &&
-      !this.cssTokensByUser[accountIndex]
-    ) {
-      this.cssTokensByUser[accountIndex] = userToken;
+    if (this.authenticateCache !== "none" && !this.cssTokensByUser[pod.index]) {
+      this.cssTokensByUser[pod.index] = userToken;
     }
     if (
       this.authenticateCache === "all" &&
-      !this.authAccessTokenByUser[accountIndex]
+      !this.authAccessTokenByUser[pod.index]
     ) {
-      this.authAccessTokenByUser[accountIndex] = accessToken;
+      this.authAccessTokenByUser[pod.index] = accessToken;
     }
     if (
       this.authenticateCache === "all" &&
-      !this.authFetchersByUser[accountIndex]
+      !this.authFetchersByUser[pod.index]
     ) {
-      this.authFetchersByUser[accountIndex] = theFetch;
+      this.authFetchersByUser[pod.index] = theFetch;
     }
 
     return theFetch;
@@ -206,7 +178,7 @@ export class AuthFetchCache {
     for (let userIndex = 0; userIndex < userCount; userIndex++) {
       this.authFetchersByUser[userIndex] = null;
 
-      const account = `user${userIndex}`;
+      const pod = this.accountInfos[userIndex];
 
       process.stdout.write(
         `   Pre-cache is authenticating user ${
@@ -222,9 +194,7 @@ export class AuthFetchCache {
         );
         token = await createUserToken(
           this.cli,
-          this.cssBaseUrl,
-          account,
-          "password",
+          pod,
           this.fetcher,
           this.tokenFetchDuration
         );
@@ -248,8 +218,7 @@ export class AuthFetchCache {
         );
         const [fetch, accessToken] = await getUserAuthFetch(
           this.cli,
-          this.cssBaseUrl,
-          account,
+          pod,
           token,
           this.fetcher,
           this.authAccessTokenDuration,
@@ -360,12 +329,7 @@ export class AuthFetchCache {
     }
   }
 
-  async test(
-    accountCount: number,
-    cssBaseUrl: string,
-    filename: string,
-    fetchTimeoutMs: number
-  ) {
+  async test(accountCount: number, filename: string, fetchTimeoutMs: number) {
     console.log(
       `Testing ${accountCount} solid logins (authenticate=${this.authenticate} authenticateCache="${this.authenticateCache}")...`
     );
@@ -382,7 +346,7 @@ export class AuthFetchCache {
       try {
         const aFetch = await this.getAuthFetcher(accountInfo);
         const res: AnyFetchResponseType = await aFetch(
-          `${cssBaseUrl}${accountInfo.podName}/${filename}`,
+          `${accountInfo.podUri}/${filename}`,
           {
             method: "GET",
             //open bug in nodejs typescript that AbortSignal.timeout doesn't work
@@ -431,7 +395,6 @@ export class AuthFetchCache {
   // authFetchersByUser: Array<typeof fetch | null> = [];
   toString(): string {
     return `AuthFetchCache{
-                cssBaseUrl=${this.cssBaseUrl}, 
                 authenticateCache=${this.authenticateCache}, 
                 authenticate=${this.authenticate}, 
                 cssTokensByUser.length=${this.cssTokensByUser.length}, 
@@ -445,7 +408,6 @@ export class AuthFetchCache {
 
   toStatsObj(): AuthFetchCacheStats {
     return {
-      cssBaseUrl: this.cssBaseUrl,
       authenticateCache: this.authenticateCache,
       authenticate: this.authenticate,
       lenCssTokensByUser: this.cssTokensByUser.length,
@@ -494,7 +456,7 @@ export class AuthFetchCache {
     await fs.writeFile(authCacheFile, JSON.stringify(cacheContent));
   }
   async saveHeadersAsCsv(
-    cssBaseUrl: string,
+    pod: PodAndOwnerInfo,
     podFilename: string,
     csvFile: string
   ) {
@@ -505,12 +467,11 @@ export class AuthFetchCache {
       userIndex++
     ) {
       const account = `user${userIndex}`;
-      const resourceUrl = `${cssBaseUrl}${account}/${podFilename}`;
+      const resourceUrl = `${pod.podUri}/${podFilename}`;
 
       const [authHeaders, accessToken] = await getFetchAuthHeaders(
         this.cli,
-        resourceUrl,
-        `user${userIndex}`,
+        pod,
         "get",
         this.cssTokensByUser[userIndex]!,
         fetch,

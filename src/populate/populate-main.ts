@@ -6,106 +6,104 @@ import {
   generateRdfFiles,
   generateVariableSizeFiles,
 } from "./generate-files.js";
-import {
-  CreatedUserInfo,
-  generateAccountsAndPods,
-} from "./generate-account-pod.js";
+import { generateAccountsAndPods } from "./generate-account-pod.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
-import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
-import nodeFetch from "node-fetch";
 import { getCliArgs } from "./populate-args.js";
 import fs from "fs";
-import { readFile } from "node:fs/promises";
-import { ProvidedAccountInfo } from "../common/account.js";
-import { getAccounts } from "../common/account";
+import {
+  AccountCreateOrder,
+  getAccountCreateOrders,
+  PodAndOwnerInfo,
+} from "../common/account.js";
 import { AccountAction } from "../common/cli-args";
+import { uploadPodFile } from "../solid/solid-upload.js";
+import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
 
 async function main() {
   const cli = getCliArgs();
-  const fetcher: AnyFetchType = false ? nodeFetch : es6fetch;
 
-  const providedAccountInfo: ProvidedAccountInfo[] = await getAccounts(cli);
-  const createdUsersInfo: CreatedUserInfo[] = [];
+  const accountCreateOrders: AccountCreateOrder[] =
+    cli.accountAction == AccountAction.UseExisting
+      ? []
+      : await getAccountCreateOrders(cli);
+  const createdUserInfos: PodAndOwnerInfo[] = [];
 
-  for (const cssBaseUrl of cli.cssBaseUrl) {
-    const authFetchCache = new AuthFetchCache(
+  if (cli.accountAction != AccountAction.UseExisting) {
+    //TODO handle Auto and Create differently
+    await generateAccountsAndPods(cli, accountCreateOrders, createdUserInfos);
+  } else {
+    //TODO fetch info about existing accounts? Or make sure CLI provides it?
+  }
+
+  const authFetchCache = new AuthFetchCache(cli, createdUserInfos, true, "all");
+
+  for (const createdUserInfo of createdUserInfos) {
+    //create dummy.txt
+    const authFetch = await authFetchCache.getAuthFetcher(createdUserInfo);
+    await uploadPodFile(
       cli,
-      providedAccountInfo,
-      cssBaseUrl,
-      true,
-      "all",
-      fetcher
+      createdUserInfo,
+      "DUMMY DATA FOR " + createdUserInfo.username,
+      "dummy.txt",
+      authFetch,
+      CONTENT_TYPE_TXT,
+      createdUserInfo.index < 2
     );
+  }
 
-    if (cli.accountAction != AccountAction.UseExisting) {
-      //TODO handle Auto and Create differently
-      await generateAccountsAndPods(
-        cli,
-        cssBaseUrl,
-        authFetchCache,
-        providedAccountInfo,
-        createdUsersInfo
-      );
-    }
+  if (cli.generateVariableSize) {
+    await generateVariableSizeFiles(
+      authFetchCache,
+      cli,
+      createdUserInfos,
+      cli.addAclFiles,
+      cli.addAcrFiles,
+      cli.addAcFilePerResource,
+      cli.addAcFilePerDir,
+      cli.dirDepth
+    );
+  }
 
-    if (cli.generateVariableSize) {
-      await generateVariableSizeFiles(
-        authFetchCache,
-        cli,
-        cssBaseUrl,
-        providedAccountInfo,
-        cli.addAclFiles,
-        cli.addAcrFiles,
-        cli.addAcFilePerResource,
-        cli.addAcFilePerDir,
-        cli.dirDepth
-      );
-    }
+  if (cli.generateFixedSize) {
+    await generateFixedSizeFiles(
+      authFetchCache,
+      cli,
+      createdUserInfos,
+      cli.fileCount,
+      cli.fileSize,
+      cli.addAclFiles,
+      cli.addAcrFiles,
+      cli.addAcFilePerResource,
+      cli.addAcFilePerDir,
+      cli.dirDepth
+    );
+  }
 
-    if (cli.generateFixedSize) {
-      await generateFixedSizeFiles(
-        authFetchCache,
-        cli,
-        cssBaseUrl,
-        providedAccountInfo,
-        cli.fileCount,
-        cli.fileSize,
-        cli.addAclFiles,
-        cli.addAcrFiles,
-        cli.addAcFilePerResource,
-        cli.addAcFilePerDir,
-        cli.dirDepth
-      );
-    }
+  if (cli.generateRdf) {
+    await generateRdfFiles(
+      cli.baseRdfFile || "error",
+      authFetchCache,
+      cli,
+      createdUserInfos,
+      cli.addAclFiles,
+      cli.addAcrFiles
+    );
+  }
 
-    if (cli.generateRdf) {
-      await generateRdfFiles(
-        cli.baseRdfFile || "error",
-        authFetchCache,
-        cli,
-        cssBaseUrl,
-        providedAccountInfo,
-        cli.addAclFiles,
-        cli.addAcrFiles
-      );
-    }
-
-    if (cli.generateFromDir && cli.generatedDataBaseDir) {
-      await populatePodsFromDir(
-        authFetchCache,
-        cli,
-        cssBaseUrl,
-        cli.generatedDataBaseDir,
-        cli.addAclFiles,
-        cli.addAcrFiles
-      );
-    }
+  if (cli.generateFromDir && cli.generatedDataBaseDir) {
+    await populatePodsFromDir(
+      authFetchCache,
+      cli,
+      cli.generatedDataBaseDir,
+      cli.addAclFiles,
+      cli.addAcrFiles
+    );
   }
 
   if (cli.userJsonOut) {
     await fs.promises.writeFile(
       cli.userJsonOut,
-      JSON.stringify(createdUsersInfo, null, 3),
+      JSON.stringify(createdUserInfos, null, 3),
       { encoding: "utf-8" }
     );
     cli.v2(`Wrote user info to '${cli.userJsonOut}'`);

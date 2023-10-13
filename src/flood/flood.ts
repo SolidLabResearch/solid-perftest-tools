@@ -7,11 +7,6 @@ import { Response as NodeJsResponse } from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { fromNow } from "../utils/time-helpers.js";
 import { once } from "events";
-import {
-  AnyFetchResponseType,
-  AnyFetchType,
-  es6fetch,
-} from "../utils/generic-fetch.js";
 import { DurationCounter } from "../utils/duration-counter.js";
 import * as fs from "fs";
 import { promises as afs } from "fs";
@@ -35,20 +30,17 @@ import {
 import { fork } from "child_process";
 import { ControllerMsg, WorkerMsg } from "./flood-messages.js";
 import { MessageCheat } from "./message-cheat.js";
-import { getAccounts, ProvidedAccountInfo } from "../common/account.js";
+import { getAccountCreateOrders, PodAndOwnerInfo } from "../common/account.js";
 
 async function main() {
   const cli = getCliArgs();
-  const fetcher: AnyFetchType = cli.useNodeFetch ? nodeFetch : es6fetch;
 
-  const accounts: ProvidedAccountInfo[] = await getAccounts(cli);
+  const accounts: PodAndOwnerInfo[] = await getPodAndOwnerInfo(cli);
   const authFetchCache = new AuthFetchCache(
     cli,
     accounts,
-    cli.cssBaseUrl[0], //TODO select which server to flood if multiple
     cli.authenticate,
-    cli.authenticateCache,
-    fetcher
+    cli.authenticateCache
   );
 
   let counter = new Counter();
@@ -121,7 +113,7 @@ async function main() {
     let filenameIndexingStart = cli.filenameIndexingStart;
     const changeIndex = cli.filenameIndexing && !cli.durationS;
     for (let index = 0; index < cli.processCount; index++) {
-      const worker_exe = new URL("./css-flood-worker", import.meta.url)
+      const worker_exe = new URL("./solid-flood-worker", import.meta.url)
         .toString()
         .replace("file:/", "");
       const processFetchCount = fQuotient + (index < fRemainder ? 1 : 0);

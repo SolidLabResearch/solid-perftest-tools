@@ -5,26 +5,71 @@ export function accountEmail(account: string): string {
   return `${account}@example.org`;
 }
 
-export interface ProvidedAccountInfo {
+export enum CreateAccountMethod {
+  NONE = "NONE",
+  CSS_V6 = "CSS_V6",
+  CSS_V7 = "CSS_V7",
+}
+export type CreateAccountMethodStringsType = keyof typeof CreateAccountMethod;
+export const createAccountMethodStrings: CreateAccountMethodStringsType[] = [
+  "NONE",
+  "CSS_V6",
+  "CSS_V7",
+];
+
+export interface AccountCreateOrder {
+  //Create a linked WebID, Idp and pod, using an identity provider solid server like CSS
   index: number;
   username: string;
   password: string;
   podName: string; //defaults to username
   email: string; //default based on username
-  // webID?: string;  //not (yet?) relevant
+
+  //AccountCreateOrder specific
+  createAccountMethod?: CreateAccountMethod; //undefined if unknown, NONE if there is none. Default: try to auto detect.
+  createAccountUri?: string; //for CSS, this is typically ${serverRootUri}/idp/register/ or ${serverRootUri}/.account/
+
+  // webID?: string;  //this does not support using a custom preexisting WebID
 }
 
-export async function getAccounts(
+export enum MachineLoginMethod {
+  NONE = "NONE", //No way to login without user interaction
+  CSS_V6 = "CSS_V6",
+  CSS_V7 = "CSS_V7",
+}
+
+export interface PodAndOwnerInfo {
+  index: number;
+
+  //Login info
+  username: string;
+  password: string;
+  email: string; //default based on username
+
+  //WebID
+  webID: string; //This is typically a resource in pod, and for CSS this typically is ${serverRootUri}/${podName}/profile/card#me
+
+  //Identity Provider (IdP)
+  oidcIssuer: string; //uri
+  machineLoginMethod?: MachineLoginMethod; //undefined if unknown, NONE if there is none
+  machineLoginUri?: string; //for CSS, this is typically ${serverRootUri}/idp/credentials/ or ${serverRootUri}/.account/credentials/
+
+  //pod
+  // podName: string;  //info not really relevant or useful
+  podUri: string; //for CSS, this is typically  ${serverRootUri}/${podName}/
+}
+
+export async function getAccountCreateOrders(
   cli: CliArgsCommon
-): Promise<ProvidedAccountInfo[]> {
-  const providedAccountInfo: ProvidedAccountInfo[] = [];
+): Promise<AccountCreateOrder[]> {
+  const res: AccountCreateOrder[] = [];
   if (cli.accountSource === AccountSource.Template) {
     for (let index = 0; index < cli.accountSourceCount; index++) {
       const username = cli.accountSourceTemplateUsername.replaceAll(
         "{{NR}}",
         `${index}`
       );
-      providedAccountInfo.push({
+      res.push({
         username,
         password: cli.accountSourceTemplatePass.replaceAll(
           "{{NR}}",
@@ -33,6 +78,9 @@ export async function getAccounts(
         podName: username,
         email: accountEmail(username),
         index,
+        //TODO do auto-detect here! use URI, querying it if needed.
+        createAccountMethod: cli.accountSourceTemplateCreateAccountMethod,
+        createAccountUri: cli.accountSourceTemplateCreateAccountUri,
       });
     }
   } else if (cli.accountSource === AccountSource.File) {
@@ -53,17 +101,44 @@ export async function getAccounts(
           `File "${cli.accountSourceFile}" contains an entry without username and/or password.`
         );
       }
-      providedAccountInfo.push({
+      if (!ui.accountSourceTemplateCreateAccountMethod) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without accountSourceTemplateCreateAccountMethod.`
+        );
+      }
+      if (!ui.accountSourceTemplateCreateAccountUri) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without accountSourceTemplateCreateAccountUri.`
+        );
+        //TODO if auto-detect is implemented above, just reuse it here
+      }
+      if (
+        !createAccountMethodStrings.includes(
+          ui.accountSourceTemplateCreateAccountMethod
+        )
+      ) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry with invalid accountSourceTemplateCreateAccountMethod: ${ui.accountSourceTemplateCreateAccountMethod}`
+        );
+      }
+      if (ui.accountSourceTemplateCreateAccountMethod == "NONE") {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry with accountSourceTemplateCreateAccountUri: '${ui.accountSourceTemplateCreateAccountMethod}'. This means accounts cannot be created.`
+        );
+      }
+      res.push({
         username: ui.username,
         password: ui.password,
         podName: ui.padName ?? ui.username,
         email: ui.email ?? accountEmail(ui.username),
         index,
+        createAccountMethod: ui.accountSourceTemplateCreateAccountMethod,
+        createAccountUri: ui.accountSourceTemplateCreateAccountUri,
       });
       index++;
     }
   } else {
     throw new Error(`Unsupported --account-source ${cli.accountSource}`);
   }
-  return providedAccountInfo;
+  return res;
 }

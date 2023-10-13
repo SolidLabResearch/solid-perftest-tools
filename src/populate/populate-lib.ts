@@ -5,19 +5,16 @@ import {
   populatePodsFromDir,
 } from "./populate-from-dir.js";
 import {
-  CreatedUserInfo,
+  PodAndOwnerInfo,
   generateAccountsAndPodsFromList,
 } from "./generate-account-pod.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
-import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
+import { AnyFetchType } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
-import {
-  AccountAction,
-  AccountSource,
-  CliArgsPopulate,
-} from "./populate-args.js";
+import { CliArgsPopulate } from "./populate-args.js";
+import { AccountAction, AccountSource } from "../common/cli-args.js";
 
-export type { CreatedUserInfo } from "./generate-account-pod.js";
+export type { PodAndOwnerInfo } from "./generate-account-pod.js";
 export async function populateServersFromDir({
   verbose,
   urlToDirMap,
@@ -26,7 +23,7 @@ export async function populateServersFromDir({
   verbose: boolean;
   urlToDirMap: { [dir: string]: string };
   authorization: "WAC" | "ACP" | undefined;
-}): Promise<CreatedUserInfo[]> {
+}): Promise<PodAndOwnerInfo[]> {
   //just hack together some CliArgs for consistency
   const cli: CliArgsPopulate = {
     verbosity_count: verbose ? 1 : 0,
@@ -63,20 +60,12 @@ export async function populateServersFromDir({
       if (verbose) console.log(message, ...optionalParams);
     },
   };
-  const fetcher: AnyFetchType = false ? nodeFetch : es6fetch;
 
-  const createdUsersInfo: CreatedUserInfo[] = [];
+  const createdUsersInfo: PodAndOwnerInfo[] = [];
 
   for (const [cssBaseUrl, dir] of Object.entries(urlToDirMap)) {
     const accounts = await findAccountsFromDir(dir);
-    const authFetchCache = new AuthFetchCache(
-      cli,
-      accounts,
-      cssBaseUrl,
-      true,
-      "all",
-      fetcher
-    );
+    const authFetchCache = new AuthFetchCache(cli, accounts, true, "all");
 
     if (cli.accountAction !== AccountAction.UseExisting) {
       console.log(

@@ -2,6 +2,11 @@
 
 import yargs, { Arguments, CamelCaseKey } from "yargs";
 import { hideBin } from "yargs/helpers";
+import {
+  CreateAccountMethod,
+  createAccountMethodStrings,
+  CreateAccountMethodStringsType,
+} from "./account";
 
 export enum AccountAction {
   UseExisting,
@@ -14,9 +19,15 @@ export enum AccountSource {
   Template,
 }
 
+export enum SolidServerAccountApiVersion {
+  NONE = "NONE", //No account API!
+  CSS_V1 = "CSS_V1",
+  CSS_V6 = "CSS_V6",
+  CSS_V7 = "CSS_V7",
+}
+
 export interface CliArgsCommon {
   verbosity_count: number;
-  cssBaseUrl: string[];
 
   accountAction: AccountAction;
   accountSource: AccountSource;
@@ -24,6 +35,8 @@ export interface CliArgsCommon {
   accountSourceFile?: string;
   accountSourceTemplateUsername: string;
   accountSourceTemplatePass: string;
+  accountSourceTemplateCreateAccountMethod?: CreateAccountMethod; //undefined = try to autodetect
+  accountSourceTemplateCreateAccountUri: string;
 
   v1: (message?: any, ...optionalParams: any[]) => void;
   v2: (message?: any, ...optionalParams: any[]) => void;
@@ -38,6 +51,7 @@ let ya = yargs(hideBin(process.argv))
       "Verbosity. The more times this option is added, the more messages are printed.",
     demandOption: false,
   })
+  //in the future, --url will not be mandatory, because you'll also be able to specify a file with SolidServerInfo, or a template and count (for example, for a hundred servers)
   .option("url", {
     group: "CSS Server:",
     alias: "u",
@@ -54,7 +68,7 @@ let ya = yargs(hideBin(process.argv))
     description:
       "Do accounts exist already, or do they need to be created? (AUTO will create them if they don't yet exist.)" +
       " Creating accounts includes creating a webID, and a pod.",
-    // default: "USE_EXISTING",
+    default: "USE_EXISTING",
     demandOption: true,
   })
   .option("account-source", {
@@ -93,6 +107,21 @@ let ya = yargs(hideBin(process.argv))
     description:
       "Template for the account password. The text {{NR}} is replaced by the user number.",
     default: "pass",
+    demandOption: false,
+  })
+  .option("account-template-create-account-method", {
+    group: "Accounts:",
+    type: "string",
+    choices: createAccountMethodStrings,
+    description:
+      "Template for the account create method. One of NONE, CSS_V6, CSS_V7. Leave unspecified for auto detect.",
+    default: undefined,
+    demandOption: false,
+  })
+  .option("account-template-create-account-uri", {
+    group: "Accounts:",
+    type: "string",
+    description: "Template for the account create URI.",
     demandOption: false,
   })
 
@@ -150,6 +179,8 @@ type ParsedArgvCommonType = {
   accountSourceFile: string | undefined;
   accountTemplateUsername: string;
   accountTemplatePassword: string;
+  accountTemplateCreateAccountMethod?: CreateAccountMethodStringsType;
+  accountTemplateCreateAccountUri: string;
 };
 
 export function getArgvCommon(): ArgvCommonType {
@@ -179,10 +210,16 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
     //this should not happen
     throw new Error(`--account-source ${argv.accountSource} is invalid`);
   }
+  if (accountSource == AccountSource.Template) {
+    if (!argv.accountTemplateCreateAccountUri) {
+      throw new Error(
+        `--account-source-template-create-account-uri is required for --account-source ${argv.accountSource}`
+      );
+    }
+  }
 
   return {
     verbosity_count: argv.v,
-    cssBaseUrl: argv.url.map((u) => (u.endsWith("/") ? u : u + "/")),
 
     accountAction,
     accountSource,
@@ -190,6 +227,11 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
     accountSourceFile: argv.accountSourceFile,
     accountSourceTemplateUsername: argv.accountTemplateUsername,
     accountSourceTemplatePass: argv.accountTemplatePassword,
+    accountSourceTemplateCreateAccountMethod:
+      argv.accountTemplateCreateAccountMethod
+        ? CreateAccountMethod[argv.accountTemplateCreateAccountMethod]
+        : undefined,
+    accountSourceTemplateCreateAccountUri: argv.accountTemplateCreateAccountUri,
 
     v3: (message?: any, ...optionalParams: any[]) => {
       if (argv.v >= 3) console.log(message, ...optionalParams);

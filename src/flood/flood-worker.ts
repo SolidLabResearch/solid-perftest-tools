@@ -2,7 +2,7 @@
 
 import { ControllerMsg, WorkerMsg } from "./flood-messages.js";
 import { CliArgsFlood, getCliArgs } from "./flood-args.js";
-import { AnyFetchType, es6fetch } from "../utils/generic-fetch.js";
+import { AnyFetchType } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import {
@@ -16,7 +16,7 @@ import { MessageCheat } from "./message-cheat.js";
 async function main() {
   if (!process.send) {
     console.error(
-      "Don't call this directly! css-flood-worker should be spawned as child process of css-flood."
+      "Don't call this directly! solid-flood-worker should be spawned as child process of solid-flood."
     );
     process.exit(1);
   }
@@ -52,7 +52,6 @@ async function main() {
     switch (message.messageType) {
       case "SetCliArgs": {
         cli = message.cliArgs;
-        fetcher = cli.useNodeFetch ? nodeFetch : es6fetch;
         //override fetchCount with the part of the fetchCount for this process
         console.log(
           `Overriding for process ${process.pid}: ` +
@@ -81,10 +80,8 @@ async function main() {
         authFetchCache = new AuthFetchCache(
           cli,
           accounts,
-          cssBaseUrl,
           cli.authenticate,
-          cli.authenticateCache,
-          fetcher
+          cli.authenticateCache
         );
         console.assert(authFetchCache.authAccessTokenByUser !== null);
         await authFetchCache.loadString(message.authCacheContent);

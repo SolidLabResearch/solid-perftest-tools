@@ -19,6 +19,7 @@ export type StepName =
   | "notificationsConnectWebsockets"
   // | "notificationsServeWebHooks"  //won't implement: YAGNI
   | "notificationsDelete"
+  | "saveAuthHeaders"
   | "flood";
 
 const ALLOWED_STEPS: StepName[] = [
@@ -86,13 +87,15 @@ let ya = getArgvCommon()
     demandOption: false,
     default: 1,
   })
-  .option("userCount", {
+  .option("podCount", {
     group: "Fetcher Setup:",
     // alias: "uc",
     type: "number",
-    description: "Number of users",
+    description:
+      "Number of pods to use when fetching (default 0 which means all available). " +
+      "There can be more pods available (see --account-* options), but only this many will be used.",
     demandOption: false,
-    default: 10,
+    default: 0,
   })
   .option("fetchTimeoutMs", {
     group: "Fetch Action:",
@@ -239,7 +242,7 @@ let ya = getArgvCommon()
   .epilogue(
     `Details for --steps:
     
-css-flood performs one or more steps in a fixed order. 
+solid-flood performs one or more steps in a fixed order. 
 --steps selects which steps run (and which don't).
 
 A lot of these steps are related to the "Authentication Cache".
@@ -320,7 +323,7 @@ export type FetchScenario =
   | "NO_CONTENT_TRANSLATION";
 
 export interface CliArgsFlood extends CliArgsCommon {
-  userCount: number;
+  podCount: number;
   fetchTimeoutMs: number;
   fetchCount: number;
   parallel: number;
@@ -361,7 +364,7 @@ export function getCliArgs(): CliArgsFlood {
     uploadSizeByte: argv.uploadSizeByte,
     scenario: <FetchScenario>argv.scenario,
 
-    userCount: argv.userCount || 1,
+    podCount: argv.podCount || 0,
     fetchTimeoutMs: argv.fetchTimeoutMs || 4_000,
     fetchCount: argv.fetchCount || 1,
     parallel: argv.parallel || 10,
