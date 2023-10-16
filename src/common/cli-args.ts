@@ -121,7 +121,9 @@ let ya = yargs(hideBin(process.argv))
   .option("account-template-create-account-uri", {
     group: "Accounts:",
     type: "string",
-    description: "Template for the account create URI.",
+    description:
+      "Template for the account create URI. " +
+      "This specifies the server, but also the path on the server of the account create endpoint.",
     demandOption: false,
   })
 
@@ -132,10 +134,25 @@ let ya = yargs(hideBin(process.argv))
     }
 
     if (argvc.accountSource == "FILE" && !argvc.accountSourceFile) {
-      return "--account-source FILE requires --account-source-file";
+      return "--account-source ${argvc.accountSource} requires --account-source-file";
     }
     if (argvc.accountSource == "TEMPLATE" && !argvc.accountSourceCount) {
-      return "--account-source FILE requires --account-source-count";
+      return `--account-source ${argvc.accountSource} requires --account-source-count`;
+    }
+    if (
+      argvc.accountSource == "TEMPLATE" &&
+      argvc.accountTemplateCreateAccountMethod &&
+      argvc.accountTemplateCreateAccountMethod != "NONE" &&
+      !argvc.accountTemplateCreateAccountUri
+    ) {
+      return `--account-template-create-account-method ${argvc.accountTemplateCreateAccountMethod} requires --account-template-create-account-uri`;
+    }
+    if (
+      argvc.accountSource == "TEMPLATE" &&
+      !argvc.accountTemplateCreateAccountMethod &&
+      !argvc.accountTemplateCreateAccountUri
+    ) {
+      return `--account-source ${argvc.accountSource} requires --account-template-create-account-uri (or --account-template-create-account-method NONE)`;
     }
 
     if (argvc.generateFixedSize && !argvc.userCount) {
@@ -180,7 +197,7 @@ type ParsedArgvCommonType = {
   accountTemplateUsername: string;
   accountTemplatePassword: string;
   accountTemplateCreateAccountMethod?: CreateAccountMethodStringsType;
-  accountTemplateCreateAccountUri: string;
+  accountTemplateCreateAccountUri?: string;
 };
 
 export function getArgvCommon(): ArgvCommonType {
@@ -231,7 +248,8 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
       argv.accountTemplateCreateAccountMethod
         ? CreateAccountMethod[argv.accountTemplateCreateAccountMethod]
         : undefined,
-    accountSourceTemplateCreateAccountUri: argv.accountTemplateCreateAccountUri,
+    accountSourceTemplateCreateAccountUri:
+      argv.accountTemplateCreateAccountUri!,
 
     v3: (message?: any, ...optionalParams: any[]) => {
       if (argv.v >= 3) console.log(message, ...optionalParams);

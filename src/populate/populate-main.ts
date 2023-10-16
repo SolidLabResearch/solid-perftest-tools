@@ -26,11 +26,11 @@ async function main() {
     cli.accountAction == AccountAction.UseExisting
       ? []
       : await getAccountCreateOrders(cli);
-  const createdUserInfos: PodAndOwnerInfo[] = [];
+  let createdUserInfos: PodAndOwnerInfo[] = [];
 
   if (cli.accountAction != AccountAction.UseExisting) {
     //TODO handle Auto and Create differently
-    await generateAccountsAndPods(cli, accountCreateOrders, createdUserInfos);
+    createdUserInfos = await generateAccountsAndPods(cli, accountCreateOrders);
   } else {
     //TODO fetch info about existing accounts? Or make sure CLI provides it?
   }
@@ -92,9 +92,13 @@ async function main() {
 
   if (cli.generateFromDir && cli.generatedDataBaseDir) {
     await populatePodsFromDir(
+      createdUserInfos.map((p) => ({
+        ...p,
+        //QUICK hack to match dirs with users
+        dir: `${cli.generatedDataBaseDir}/${p.username}`,
+      })),
       authFetchCache,
       cli,
-      cli.generatedDataBaseDir,
       cli.addAclFiles,
       cli.addAcrFiles
     );

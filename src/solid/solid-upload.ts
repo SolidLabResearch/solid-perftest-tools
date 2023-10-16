@@ -19,6 +19,7 @@ import {
   MachineLoginMethod,
   PodAndOwnerInfo,
 } from "../common/account.js";
+import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 
 /**
  *
@@ -112,10 +113,7 @@ export async function createPodAccountsApi1and6(
   const idpPath = accountCreateOrder.createAccountUri.includes("/idp/")
     ? "idp"
     : ".account"; //'idp' or '.account';
-  const serverBaseUrl = accountCreateOrder.createAccountUri.replace(
-    /(https?:\/\/[^\/]+\/).*/,
-    "$1"
-  );
+  const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
 
   console.assert(
     accountCreateOrder.createAccountUri.endsWith(`/idp/register/`) ||
@@ -254,10 +252,7 @@ export async function createPodAccountsApi7(
     cookieHeader,
     fullAccountApiInfo
   );
-  const serverBaseUrl = accountCreateOrder.createAccountUri.replace(
-    /(https?:\/\/[^\/]+\/).*/,
-    "$1"
-  );
+  const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
   return [
     false,
     {

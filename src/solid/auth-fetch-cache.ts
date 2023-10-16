@@ -76,6 +76,17 @@ export class AuthFetchCache {
     this.authenticate = authenticate;
     this.authenticateCache = authenticateCache;
     this.fetcher = nodeFetch; //cli.fetcher TODO ? nodeFetch : es6fetch;;
+
+    //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
+    let i = 0;
+    for (const accountInfo of accountInfos) {
+      if (accountInfo.index != i) {
+        throw new Error(
+          `Unexpected accountInfo index ${accountInfo.index} at index ${i}`
+        );
+      }
+      i++;
+    }
   }
 
   expireAccessToken(userId: number) {

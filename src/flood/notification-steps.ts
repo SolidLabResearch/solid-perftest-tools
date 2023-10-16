@@ -2,8 +2,9 @@
 
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CliArgsFlood, HttpVerb } from "./flood-args.js";
-import { Counter, fetchPodFile } from "./flood-steps.js";
+import { Counter, fetchPodFile, FloodState } from "./flood-steps.js";
 import { AnyFetchResponseType } from "../utils/generic-fetch.js";
+import { getNotificationUri } from "../utils/solid-server-detect.js";
 
 //spec: https://solidproject.org/TR/2022/notifications-protocol-20221231
 //see also: https://communitysolidserver.github.io/CommunitySolidServer/6.x/usage/notifications/
@@ -54,7 +55,7 @@ interface Notification {
 const notificationSubscriptions: NotificationsSubscription[] = [];
 
 export async function stepNotificationsSubscribe(
-  authFetchCache: AuthFetchCache,
+  floodState: FloodState,
   cli: CliArgsFlood,
   counter: Counter
 ) {
@@ -67,7 +68,7 @@ export async function stepNotificationsSubscribe(
 
     const fetchTimeoutMs = 2000;
     try {
-      const account = `user${curUserIndex}`;
+      const pod = authFetchCache.accountInfos[curUserIndex];
       const aFetch = await authFetchCache.getAuthFetcher(
         authFetchCache.accountInfos[curUserIndex]
       );
@@ -79,11 +80,7 @@ export async function stepNotificationsSubscribe(
 
       //TODO: the .notifications/ URL is currently hardcoded. It is cleaner to find this URL automatically.
       //      See https://communitysolidserver.github.io/CommunitySolidServer/6.x/usage/notifications/
-      const url = `${cli.cssBaseUrl}.notifications/${
-        cli.notificationChannelType === "websocket"
-          ? "WebSocketChannel2023/"
-          : "WebhookChannel2023/"
-      }`;
+      const url = getNotificationUri(pod.podUri, cli.notificationChannelType);
       options.headers = {
         "Content-type": "application/ld+json",
       };
@@ -94,7 +91,7 @@ export async function stepNotificationsSubscribe(
             ? "WebSocketChannel2023"
             : "WebhookChannel2023"
         }`,
-        topic: `${cli.cssBaseUrl}${account}/${cli.podFilename}`,
+        topic: `${pod.podUri}${cli.podFilename}`,
       };
       if (cli.notificationChannelType === "webhook") {
         notificationRequest.sendTo = cli.notificationWebhookTarget;
@@ -109,7 +106,7 @@ export async function stepNotificationsSubscribe(
       if (!res.ok) {
         const bodyError = await res.text();
         const errorMessage =
-          `${res.status} - Notification subscribe with account ${account}, ` +
+          `${res.status} - Notification subscribe with account ${pod.username}, ` +
           `target ${notificationRequest.topic} URL "${url}" failed: ${bodyError}`;
         console.error(errorMessage);
         cli.v2(
@@ -151,7 +148,7 @@ export async function stepNotificationsSubscribe(
 }
 
 export async function stepNotificationsConnectWebsockets(
-  authFetchCache: AuthFetchCache,
+  floodState: FloodState,
   cli: CliArgsFlood,
   counter: Counter
 ) {
@@ -160,7 +157,7 @@ export async function stepNotificationsConnectWebsockets(
 }
 
 export async function stepNotificationsDelete(
-  authFetchCache: AuthFetchCache,
+  floodState: FloodState,
   cli: CliArgsFlood,
   counter: Counter
 ) {

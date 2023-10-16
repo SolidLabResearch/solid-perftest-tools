@@ -6,26 +6,22 @@ import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
 
 export async function generateAccountsAndPods(
   cli: CliArgsPopulate,
-  providedAccountInfo: AccountCreateOrder[],
-  createdUserArr: PodAndOwnerInfo[]
-) {
-  await generateAccountsAndPodsFromList(
-    cli,
-    providedAccountInfo,
-    createdUserArr
-  );
+  providedAccountInfo: AccountCreateOrder[]
+): Promise<PodAndOwnerInfo[]> {
+  return await generateAccountsAndPodsFromList(cli, providedAccountInfo);
 }
 
 export async function generateAccountsAndPodsFromList(
   cli: CliArgsPopulate,
-  accountCreateOrders: AccountCreateOrder[],
-  createdUserArr: PodAndOwnerInfo[]
-) {
+  accountCreateOrders: AccountCreateOrder[]
+): Promise<PodAndOwnerInfo[]> {
   let i = 0;
+  const res: PodAndOwnerInfo[] = [];
   for (const accountCreateOrder of accountCreateOrders) {
     const createdUserInfo = await createAccount(cli, accountCreateOrder);
-    if (createdUserInfo) createdUserArr.push(createdUserInfo);
+    if (createdUserInfo) res.push(createdUserInfo);
 
     i += 1;
   }
+  return res;
 }

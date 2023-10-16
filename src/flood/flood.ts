@@ -14,17 +14,13 @@ import { AccessToken } from "../solid/solid-auth.js";
 import { webcrypto } from "node:crypto";
 import { getCliArgs, HttpVerb } from "./flood-args.js";
 import {
-  awaitUntilDeadline,
-  awaitUntilEmpty,
   Counter,
-  fetchPodFile,
+  FloodState,
   FloodStatistics,
-  generateUploadData,
   reportAuthCacheStatistics,
   reportFinalStatistics,
   runNamedStep,
   stepFlood,
-  stepLoadAuthCache,
   sumStatistics,
 } from "./flood-steps.js";
 import { fork } from "child_process";
@@ -51,13 +47,7 @@ async function main() {
 
   for (const stepName of cli.steps) {
     if (stepName != "flood") {
-      await runNamedStep(
-        stepName,
-        authFetchCache,
-        cli,
-        counter,
-        allFetchStartEnd
-      );
+      await runNamedStep(floodState, stepName, cli, counter, allFetchStartEnd);
     }
   }
 
@@ -80,7 +70,7 @@ async function main() {
   });
 
   if (cli.processCount == 1) {
-    await stepFlood(authFetchCache, cli, counter, allFetchStartEnd, 0);
+    await stepFlood(floodState, cli, counter, allFetchStartEnd, 0);
 
     await reportFinalStatistics(
       counter,

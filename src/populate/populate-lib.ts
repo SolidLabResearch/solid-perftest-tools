@@ -1,35 +1,35 @@
 #!/usr/bin/env node
 
 import {
+  AccountCreateOrderAndDirInfo,
   findAccountsFromDir,
+  PodAndOwnerInfoAndDirInfo,
   populatePodsFromDir,
 } from "./populate-from-dir.js";
-import {
-  PodAndOwnerInfo,
-  generateAccountsAndPodsFromList,
-} from "./generate-account-pod.js";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
 import { CliArgsPopulate } from "./populate-args.js";
 import { AccountAction, AccountSource } from "../common/cli-args.js";
+import { generateAccountsAndPodsFromList } from "./generate-account-pod.js";
 
-export type { PodAndOwnerInfo } from "./generate-account-pod.js";
+export type { PodAndOwnerInfo } from "../common/account.js";
+
 export async function populateServersFromDir({
   verbose,
   urlToDirMap,
   authorization,
 }: {
   verbose: boolean;
-  urlToDirMap: { [dir: string]: string };
+  urlToDirMap: { [accountCreateUri: string]: string };
   authorization: "WAC" | "ACP" | undefined;
 }): Promise<PodAndOwnerInfo[]> {
   //just hack together some CliArgs for consistency
   const cli: CliArgsPopulate = {
     verbosity_count: verbose ? 1 : 0,
-    cssBaseUrl: Object.keys(urlToDirMap).map((u) =>
-      u.endsWith("/") ? u : u + "/"
-    ),
+    accountSourceTemplateCreateAccountMethod: undefined,
+    accountSourceTemplateCreateAccountUri: "",
 
     accountAction: AccountAction.Auto,
     //accountSource configs are not used but require values anyway
@@ -61,34 +61,53 @@ export async function populateServersFromDir({
     },
   };
 
-  const createdUsersInfo: PodAndOwnerInfo[] = [];
+  const createdUsersInfo: PodAndOwnerInfoAndDirInfo[] = [];
+  for (const [ssAccountCreateUri, dir] of Object.entries(urlToDirMap)) {
+    //Beware: accounts are indexed PER server in this setup.
+    //        this works here, because there is an authFetchCache per server.
+    //        But when modifying this code, be aware that authFetchCache relies on a unique index.
+    const accounts: AccountCreateOrderAndDirInfo[] = await findAccountsFromDir(
+      dir,
+      ssAccountCreateUri
+    );
 
-  for (const [cssBaseUrl, dir] of Object.entries(urlToDirMap)) {
-    const accounts = await findAccountsFromDir(dir);
-    const authFetchCache = new AuthFetchCache(cli, accounts, true, "all");
-
+    let currentCreatedUsersInfo: PodAndOwnerInfoAndDirInfo[];
     if (cli.accountAction !== AccountAction.UseExisting) {
       console.log(
-        `Will generate user & pod for server ${cssBaseUrl}: ${JSON.stringify(
+        `Will generate user & pod for server ${ssAccountCreateUri}: ${JSON.stringify(
           accounts,
           null,
           3
         )}`
       );
-      await generateAccountsAndPodsFromList(
-        cli,
-        cssBaseUrl,
-        authFetchCache,
-        accounts,
-        createdUsersInfo
+      currentCreatedUsersInfo = (
+        await generateAccountsAndPodsFromList(cli, accounts)
+      ).map((p) => ({ ...p, dir }));
+    } else {
+      //TODO get info on existing accounts, or throw error
+      throw Error(
+        "populateServersFromDir does not support using existing accounts (yet)."
       );
     }
 
+    createdUsersInfo.push(
+      ...currentCreatedUsersInfo.map((p) => ({
+        ...p,
+        index: p.index + createdUsersInfo.length,
+      }))
+    );
+
+    const authFetchCache = new AuthFetchCache(
+      cli,
+      currentCreatedUsersInfo,
+      true,
+      "all"
+    );
+
     await populatePodsFromDir(
+      createdUsersInfo,
       authFetchCache,
       cli,
-      cssBaseUrl,
-      dir,
       cli.addAclFiles,
       cli.addAcrFiles
     );

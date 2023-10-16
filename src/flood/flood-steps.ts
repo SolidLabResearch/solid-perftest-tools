@@ -30,12 +30,18 @@ import { pipeline } from "node:stream/promises";
 import variable = DataFactory.variable;
 import literal = DataFactory.literal;
 import * as RDF from "rdf-js";
-import { ProvidedAccountInfo } from "../populate/generate-account-pod.js";
 import {
   stepNotificationsConnectWebsockets,
   stepNotificationsDelete,
   stepNotificationsSubscribe,
 } from "./notification-steps.js";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
+
+export interface FloodState {
+  authFetchCache: AuthFetchCache;
+  accountCreateOrders: AccountCreateOrder[];
+  pods: PodAndOwnerInfo[];
+}
 
 export function generateUploadData(
   httpVerb: HttpVerb,
@@ -624,7 +630,7 @@ export async function reportFinalStatistics(
 }
 
 export async function stepLoadAuthCache(
-  authFetchCache: AuthFetchCache,
+  floodState: FloodState,
   authCacheFile: string,
   userCount: number
 ) {
@@ -893,7 +899,7 @@ _:rename a solid:InsertDeletePatch;
 }
 
 export async function stepFlood(
-  authFetchCache: AuthFetchCache,
+  floodState: FloodState,
   cli: CliArgsFlood,
   counter: Counter,
   allFetchStartEnd: { start: number | null; end: number | null },
@@ -1036,8 +1042,8 @@ export async function stepFlood(
 }
 
 export async function runNamedStep(
+  floodState: FloodState,
   stepName: StepName,
-  authFetchCache: AuthFetchCache,
   cli: CliArgsFlood,
   counter: Counter,
   allFetchStartEnd: { start: number | null; end: number | null }
@@ -1047,32 +1053,37 @@ export async function runNamedStep(
   switch (stepName) {
     case "loadAC": {
       if (cli.authCacheFile && fs.existsSync(cli.authCacheFile)) {
-        await stepLoadAuthCache(
-          authFetchCache,
-          cli.authCacheFile,
-          cli.podCount
-        );
+        await stepLoadAuthCache(floodState, cli.authCacheFile, cli.podCount);
       }
       break;
     }
     case "fillAC": {
-      await authFetchCache.preCache(
+      await floodState.authFetchCache.preCache(
         cli.podCount,
         cli.ensureAuthExpirationS + 30
       );
-      console.log(`Auth cache now has '${authFetchCache.toCountString()}'`);
+      console.log(
+        `Auth cache now has '${floodState.authFetchCache.toCountString()}'`
+      );
       break;
     }
     case "validateAC": {
-      authFetchCache.validate(cli.podCount, cli.ensureAuthExpirationS);
+      floodState.authFetchCache.validate(
+        cli.podCount,
+        cli.ensureAuthExpirationS
+      );
       break;
     }
     case "testRequest": {
-      await authFetchCache.test(1, cli.podFilename, cli.fetchTimeoutMs);
+      await floodState.authFetchCache.test(
+        1,
+        cli.podFilename,
+        cli.fetchTimeoutMs
+      );
       break;
     }
     case "testRequests": {
-      await authFetchCache.test(
+      await floodState.authFetchCache.test(
         cli.podCount,
         cli.podFilename,
         cli.fetchTimeoutMs
@@ -1081,31 +1092,31 @@ export async function runNamedStep(
     }
     case "saveAC": {
       if (cli.authCacheFile) {
-        await authFetchCache.save(cli.authCacheFile);
+        await floodState.authFetchCache.save(cli.authCacheFile);
       }
       break;
     }
     case "notificationsSubscribe": {
       if (cli.scenario === "NOTIFICATION") {
-        await stepNotificationsSubscribe(authFetchCache, cli, counter);
+        await stepNotificationsSubscribe(floodState, cli, counter);
       }
       break;
     }
     case "notificationsConnectWebsockets": {
       if (cli.scenario === "NOTIFICATION") {
-        await stepNotificationsConnectWebsockets(authFetchCache, cli, counter);
+        await stepNotificationsConnectWebsockets(floodState, cli, counter);
       }
       break;
     }
     case "notificationsDelete": {
       if (cli.scenario === "NOTIFICATION") {
-        await stepNotificationsDelete(authFetchCache, cli, counter);
+        await stepNotificationsDelete(floodState, cli, counter);
       }
       break;
     }
     case "saveAuthHeaders": {
       if (cli.csvFile) {
-        await authFetchCache.saveHeadersAsCsv(
+        await floodState.authFetchCache.saveHeadersAsCsv(
           cli.cssBaseUrl[0],
           cli.podFilename,
           cli.csvFile
@@ -1115,7 +1126,7 @@ export async function runNamedStep(
     }
     case "flood": {
       console.assert(cli.processCount < 2);
-      await stepFlood(authFetchCache, cli, counter, allFetchStartEnd, 0);
+      await stepFlood(floodState, cli, counter, allFetchStartEnd, 0);
       break;
     }
     default: {

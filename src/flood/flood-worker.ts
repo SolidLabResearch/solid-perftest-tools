@@ -7,6 +7,7 @@ import nodeFetch from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import {
   Counter,
+  FloodState,
   makeStatistics,
   runNamedStep,
   stepFlood,
@@ -114,7 +115,7 @@ async function main() {
             }
             try {
               await stepFlood(
-                authFetchCache,
+                floodState,
                 cli,
                 counter,
                 allFetchStartEnd,

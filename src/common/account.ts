@@ -56,7 +56,7 @@ export interface PodAndOwnerInfo {
 
   //pod
   // podName: string;  //info not really relevant or useful
-  podUri: string; //for CSS, this is typically  ${serverRootUri}/${podName}/
+  podUri: string; //for CSS, this is typically  ${serverRootUri}/${podName}/   (needs to end with /)
 }
 
 export async function getAccountCreateOrders(
