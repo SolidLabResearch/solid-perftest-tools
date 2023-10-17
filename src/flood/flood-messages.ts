@@ -2,6 +2,8 @@
 
 import { CliArgsFlood, StepName } from "./flood-args.js";
 import { FloodStatistics } from "./flood-steps.js";
+import { FloodState } from "./flood-state";
+import { PodAndOwnerInfo } from "../common/account";
 
 export interface WorkerAnnounce {
   messageType: "WorkerAnnounce";
@@ -26,9 +28,10 @@ export interface SetCliArgs {
   processIndex: number;
 }
 
-export interface SetCache {
-  messageType: "SetCache";
-  authCacheContent: string;
+export interface SetFloodState {
+  messageType: "SetFloodState";
+  authCacheContent: string; //AuthCache keys don't transform into JSON cleanly
+  pods: PodAndOwnerInfo[]; //doesn't contain anything that doesn't cleanly transform into JSON and back
 }
 
 export interface RunStep {
@@ -42,4 +45,4 @@ export interface StopWorker {
 
 export type WorkerMsg = WorkerAnnounce | ReportStepDone | ReportFloodStatistics;
 
-export type ControllerMsg = SetCliArgs | RunStep | SetCache | StopWorker;
+export type ControllerMsg = SetCliArgs | RunStep | SetFloodState | StopWorker;

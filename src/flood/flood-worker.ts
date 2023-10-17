@@ -7,12 +7,12 @@ import nodeFetch from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import {
   Counter,
-  FloodState,
   makeStatistics,
   runNamedStep,
   stepFlood,
 } from "./flood-steps.js";
 import { MessageCheat } from "./message-cheat.js";
+import { FloodState } from "./flood-state.js";
 
 async function main() {
   if (!process.send) {
@@ -38,7 +38,7 @@ async function main() {
   let processIndex: number | undefined = undefined;
   let cli: CliArgsFlood | null = null;
   let fetcher: AnyFetchType | null = null;
-  let authFetchCache: AuthFetchCache | null = null;
+  let floodState: FloodState | null = null;
   let counter = new Counter();
   const allFetchStartEnd: { start: number | null; end: number | null } = {
     start: null,
@@ -74,31 +74,45 @@ async function main() {
         processIndex = message.processIndex;
         break;
       }
-      case "SetCache": {
+      case "SetFloodState": {
         if (cli == null || fetcher == null) {
-          throw new Error(`SetCache called before SetCliArgs`);
+          throw new Error(`SetFloodState called before SetCliArgs`);
         }
-        authFetchCache = new AuthFetchCache(
+        const pods = message.pods;
+        const authFetchCache = new AuthFetchCache(
           cli,
-          accounts,
+          pods,
           cli.authenticate,
           cli.authenticateCache
         );
         console.assert(authFetchCache.authAccessTokenByUser !== null);
         await authFetchCache.loadString(message.authCacheContent);
         // await authFetchCache.validate(cli.userCount, cli.ensureAuthExpirationS);
+        floodState = {
+          pods,
+          authFetchCache,
+        };
         break;
       }
       case "RunStep": {
         try {
-          if (cli == null || fetcher == null || authFetchCache == null) {
-            throw new Error(`RunStep called before SetCliArgs and/or SetCache`);
+          if (
+            cli == null ||
+            fetcher == null ||
+            floodState == null ||
+            floodState.authFetchCache == null
+          ) {
+            throw new Error(
+              `RunStep called before SetCliArgs and/or SetFloodState`
+            );
           }
-          console.assert(authFetchCache.authAccessTokenByUser !== null);
+          console.assert(
+            floodState.authFetchCache.authAccessTokenByUser !== null
+          );
           if (message.stepName != "flood") {
             await runNamedStep(
+              floodState,
               message.stepName,
-              authFetchCache,
               cli,
               counter,
               allFetchStartEnd
@@ -125,7 +139,7 @@ async function main() {
               const floodStatistics = makeStatistics(
                 counter,
                 allFetchStartEnd,
-                authFetchCache
+                floodState.authFetchCache
               );
               // @ts-ignore this should not happen, we checked this at start
               process.send({

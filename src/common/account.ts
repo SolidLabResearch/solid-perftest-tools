@@ -37,6 +37,12 @@ export enum MachineLoginMethod {
   CSS_V6 = "CSS_V6",
   CSS_V7 = "CSS_V7",
 }
+export type MachineLoginMethodStringsType = keyof typeof MachineLoginMethod;
+export const MachineLoginMethodStrings: MachineLoginMethodStringsType[] = [
+  "NONE",
+  "CSS_V6",
+  "CSS_V7",
+];
 
 export interface PodAndOwnerInfo {
   index: number;
@@ -134,6 +140,98 @@ export async function getAccountCreateOrders(
         index,
         createAccountMethod: ui.accountSourceTemplateCreateAccountMethod,
         createAccountUri: ui.accountSourceTemplateCreateAccountUri,
+      });
+      index++;
+    }
+  } else {
+    throw new Error(`Unsupported --account-source ${cli.accountSource}`);
+  }
+  return res;
+}
+
+export async function getExistingAccountsAndPods(
+  cli: CliArgsCommon
+): Promise<PodAndOwnerInfo[]> {
+  const res: PodAndOwnerInfo[] = [];
+
+  if (cli.accountSource === AccountSource.Template) {
+    for (let index = 0; index < cli.accountSourceCount; index++) {
+      function useTemplate(t: string): string {
+        return t.replaceAll("{{NR}}", `${index}`);
+      }
+
+      const username = useTemplate(cli.accountSourceTemplateUsername);
+      res.push({
+        index,
+        username,
+        password: useTemplate(cli.accountSourceTemplatePass),
+        email: accountEmail(username),
+
+        webID: useTemplate(cli.accountSourceTemplateWebID!),
+
+        oidcIssuer: useTemplate(cli.accountSourceTemplateOidcIssuer!),
+        machineLoginMethod: undefined,
+        machineLoginUri: undefined,
+        podUri: useTemplate(cli.accountSourceTemplatePodUri!),
+      });
+    }
+  } else if (cli.accountSource === AccountSource.File) {
+    const providedAccountInfoFileContent = await readFile(
+      cli.accountSourceFile || "error",
+      { encoding: "utf8" }
+    );
+    const providedAccountInfoArr = JSON.parse(providedAccountInfoFileContent);
+    if (!Array.isArray(providedAccountInfoArr)) {
+      throw new Error(
+        `File "${cli.accountSourceFile}" does not contain a JSON array.`
+      );
+    }
+    let index = 0;
+    for (const ui of providedAccountInfoArr) {
+      if (!ui.username || !ui.password) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without username and/or password.`
+        );
+      }
+      if (!ui.email) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without email.`
+        );
+      }
+      if (!ui.webID) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without webID.`
+        );
+      }
+      if (!ui.oidcIssuer) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without oidcIssuer.`
+        );
+      }
+      if (!ui.podUri) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry without podUri.`
+        );
+      }
+      if (
+        ui.machineLoginMethod &&
+        !MachineLoginMethodStrings.includes(ui.machineLoginMethod)
+      ) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an machineLoginMethod with value "${ui.machineLoginMethod}"` +
+            ` which is not one of ${MachineLoginMethodStrings.join(",")}.`
+        );
+      }
+      res.push({
+        index,
+        username: ui.username,
+        password: ui.password,
+        email: ui.email,
+        webID: ui.webID,
+        oidcIssuer: ui.oidcIssuer,
+        machineLoginMethod: ui.machineLoginMethod,
+        machineLoginUri: undefined,
+        podUri: ui.podUri,
       });
       index++;
     }

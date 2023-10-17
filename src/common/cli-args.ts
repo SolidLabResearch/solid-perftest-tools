@@ -6,7 +6,7 @@ import {
   CreateAccountMethod,
   createAccountMethodStrings,
   CreateAccountMethodStringsType,
-} from "./account";
+} from "./account.js";
 
 export enum AccountAction {
   UseExisting,
@@ -35,8 +35,15 @@ export interface CliArgsCommon {
   accountSourceFile?: string;
   accountSourceTemplateUsername: string;
   accountSourceTemplatePass: string;
+
+  //needed when creating accounts
   accountSourceTemplateCreateAccountMethod?: CreateAccountMethod; //undefined = try to autodetect
-  accountSourceTemplateCreateAccountUri: string;
+  accountSourceTemplateCreateAccountUri?: string;
+
+  //needed when using existing accounts
+  accountSourceTemplateWebID?: string;
+  accountSourceTemplateOidcIssuer?: string;
+  accountSourceTemplatePodUri?: string;
 
   v1: (message?: any, ...optionalParams: any[]) => void;
   v2: (message?: any, ...optionalParams: any[]) => void;
@@ -126,7 +133,30 @@ let ya = yargs(hideBin(process.argv))
       "This specifies the server, but also the path on the server of the account create endpoint.",
     demandOption: false,
   })
-
+  .option("account-template-webid", {
+    group: "Accounts:",
+    type: "string",
+    description: "Template for the account webID. ",
+    demandOption: false,
+  })
+  .option("account-template-webid", {
+    group: "Accounts:",
+    type: "string",
+    description: "Template for the account webID. ",
+    demandOption: false,
+  })
+  .option("account-template-oidc-issuer", {
+    group: "Accounts:",
+    type: "string",
+    description: "Template for the account OidcIssuer. ",
+    demandOption: false,
+  })
+  .option("account-template-pod-uri", {
+    group: "Accounts:",
+    type: "string",
+    description: "Template for the account Pod Uri. ",
+    demandOption: false,
+  })
   .help()
   .check((argvc, options) => {
     if (argvc.url.length < 1) {
@@ -140,19 +170,41 @@ let ya = yargs(hideBin(process.argv))
       return `--account-source ${argvc.accountSource} requires --account-source-count`;
     }
     if (
+      argvc.accounts == "CREATE" &&
       argvc.accountSource == "TEMPLATE" &&
       argvc.accountTemplateCreateAccountMethod &&
-      argvc.accountTemplateCreateAccountMethod != "NONE" &&
       !argvc.accountTemplateCreateAccountUri
     ) {
-      return `--account-template-create-account-method ${argvc.accountTemplateCreateAccountMethod} requires --account-template-create-account-uri`;
+      return `--accounts ${argvc.accounts} --account-template-create-account-method ${argvc.accountTemplateCreateAccountMethod} requires --account-template-create-account-uri`;
     }
     if (
+      argvc.accounts == "CREATE" &&
       argvc.accountSource == "TEMPLATE" &&
       !argvc.accountTemplateCreateAccountMethod &&
       !argvc.accountTemplateCreateAccountUri
     ) {
-      return `--account-source ${argvc.accountSource} requires --account-template-create-account-uri (or --account-template-create-account-method NONE)`;
+      return `--accounts ${argvc.accounts} --account-source ${argvc.accountSource} requires --account-template-create-account-uri (or --account-template-create-account-method NONE)`;
+    }
+    if (
+      argvc.accounts == "USE_EXISTING" &&
+      argvc.accountSource == "TEMPLATE" &&
+      !argvc.webid
+    ) {
+      return `--accounts ${argvc.accounts} --account-source ${argvc.accountSource} requires --account-template-webid`;
+    }
+    if (
+      argvc.accounts == "USE_EXISTING" &&
+      argvc.accountSource == "TEMPLATE" &&
+      !argvc.oidcIssuer
+    ) {
+      return `--accounts ${argvc.accounts} --account-source ${argvc.accountSource} requires --account-template-oidc-issuer`;
+    }
+    if (
+      argvc.accounts == "USE_EXISTING" &&
+      argvc.accountSource == "TEMPLATE" &&
+      !argvc.podUri
+    ) {
+      return `--accounts ${argvc.accounts} --account-source ${argvc.accountSource} requires --account-template-pod-uri`;
     }
 
     if (argvc.generateFixedSize && !argvc.userCount) {
@@ -198,6 +250,9 @@ type ParsedArgvCommonType = {
   accountTemplatePassword: string;
   accountTemplateCreateAccountMethod?: CreateAccountMethodStringsType;
   accountTemplateCreateAccountUri?: string;
+  accountSourceTemplateWebID?: string;
+  accountSourceTemplateOidcIssuer?: string;
+  accountSourceTemplatePodUri?: string;
 };
 
 export function getArgvCommon(): ArgvCommonType {
@@ -219,6 +274,16 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
       : argv.accountSource == "FILE"
       ? AccountSource.File
       : null;
+  const accountSourceTemplateCreateAccountMethod =
+    !argv.accountTemplateCreateAccountMethod
+      ? undefined
+      : argv.accountTemplateCreateAccountMethod == "NONE"
+      ? CreateAccountMethod.NONE
+      : argv.accountTemplateCreateAccountMethod == "CSS_V6"
+      ? CreateAccountMethod.CSS_V6
+      : argv.accountTemplateCreateAccountMethod == "CSS_V7"
+      ? CreateAccountMethod.CSS_V7
+      : undefined;
   if (accountAction === null) {
     //this should not happen
     throw new Error(`--accounts ${argv.accounts} is invalid`);
@@ -244,12 +309,11 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
     accountSourceFile: argv.accountSourceFile,
     accountSourceTemplateUsername: argv.accountTemplateUsername,
     accountSourceTemplatePass: argv.accountTemplatePassword,
-    accountSourceTemplateCreateAccountMethod:
-      argv.accountTemplateCreateAccountMethod
-        ? CreateAccountMethod[argv.accountTemplateCreateAccountMethod]
-        : undefined,
-    accountSourceTemplateCreateAccountUri:
-      argv.accountTemplateCreateAccountUri!,
+    accountSourceTemplateCreateAccountMethod,
+    accountSourceTemplateCreateAccountUri: argv.accountTemplateCreateAccountUri,
+    accountSourceTemplateWebID: argv.accountSourceTemplateWebID,
+    accountSourceTemplateOidcIssuer: argv.accountSourceTemplateOidcIssuer,
+    accountSourceTemplatePodUri: argv.accountSourceTemplatePodUri,
 
     v3: (message?: any, ...optionalParams: any[]) => {
       if (argv.v >= 3) console.log(message, ...optionalParams);

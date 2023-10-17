@@ -12,7 +12,7 @@ import {
   createPassword,
   getAccountApiInfo,
   getAccountInfo,
-} from "../populate/css-accounts-api";
+} from "../populate/css-accounts-api.js";
 import {
   AccountCreateOrder,
   CreateAccountMethod,

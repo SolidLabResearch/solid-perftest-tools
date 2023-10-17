@@ -24,24 +24,27 @@ import {
   RDFExtMap,
   RDFTypeValues,
 } from "../utils/rdf-helpers.js";
-import N3, { BlankNode, DataFactory, NamedNode, Quad } from "n3";
+import N3, {
+  BlankNode,
+  DataFactory,
+  NamedNode,
+  Quad,
+  Quad_Object,
+  Quad_Predicate,
+  Quad_Subject,
+} from "n3";
 import { Writable } from "stream";
 import { pipeline } from "node:stream/promises";
 import variable = DataFactory.variable;
 import literal = DataFactory.literal;
-import * as RDF from "rdf-js";
+
 import {
   stepNotificationsConnectWebsockets,
   stepNotificationsDelete,
   stepNotificationsSubscribe,
 } from "./notification-steps.js";
 import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
-
-export interface FloodState {
-  authFetchCache: AuthFetchCache;
-  accountCreateOrders: AccountCreateOrder[];
-  pods: PodAndOwnerInfo[];
-}
+import { FloodState } from "./flood-state.js";
 
 export function generateUploadData(
   httpVerb: HttpVerb,
@@ -130,7 +133,7 @@ export async function discardBodyData(response: NodeJsResponse | Response) {
 
 export async function fetchPodFile(
   scenario: FetchScenario,
-  accountInfo: ProvidedAccountInfo,
+  pod: PodAndOwnerInfo,
   podFileRelative: string,
   counter: Counter,
   authFetchCache: AuthFetchCache,
@@ -142,7 +145,7 @@ export async function fetchPodFile(
   uploadData?: Promise<ArrayBuffer>
 ) {
   try {
-    const aFetch = await authFetchCache.getAuthFetcher(accountInfo);
+    const aFetch = await authFetchCache.getAuthFetcher(pod);
     // console.log(`   Will fetch file from account ${account}, pod path "${podFileRelative}"`);
     counter.total++;
     const startedFetch = new Date().getTime();
@@ -195,9 +198,9 @@ export async function fetchPodFile(
         // options.headers = {
         //   "Accept": RDFContentTypeMap[contentTypeType],
         // };
-        if (userIndex < 2 && fetchIndex < 25) {
+        if (pod.index < 2 && fetchIndex < 25) {
           console.log(
-            `DEBUG ${scenario}: download u${userIndex}-f${fetchIndex} "${podFileRelative}" without Accept header"`
+            `DEBUG ${scenario}: download ${pod.username}-f${fetchIndex} "${podFileRelative}" without Accept header"`
           );
         }
         break;
@@ -247,16 +250,16 @@ export async function fetchPodFile(
         options.headers = {
           Accept: RDFContentTypeMap[contentTypeType],
         };
-        if (userIndex < 2 && fetchIndex < 25) {
+        if (pod.index < 2 && fetchIndex < 25) {
           console.log(
-            `DEBUG ${scenario}: download u${userIndex}-f${fetchIndex} "${podFileRelative}" as "${options.headers["Accept"]}"`
+            `DEBUG ${scenario}: download ${pod.username}-f${fetchIndex} "${podFileRelative}" as "${options.headers["Accept"]}"`
           );
         }
         break;
       }
     }
 
-    const url = `${cssBaseUrl}${account}/${podFileRelative}`;
+    const url = `${pod.podUri}/${podFileRelative}`;
     const res: AnyFetchResponseType = await aFetch(url, options);
     counter.statuses[res.status] = (counter.statuses[res.status] || 0) + 1;
 
@@ -264,7 +267,7 @@ export async function fetchPodFile(
     if (!res.ok && (scenario != "N3_PATCH" || res.status != 409)) {
       const bodyError = await res.text();
       const errorMessage =
-        `${res.status} - ${httpVerb} with account ${account}, pod path "${podFileRelative}" failed` +
+        `${res.status} - ${httpVerb} with account ${pod.username}, pod path "${podFileRelative}" failed` +
         `(URL=${url}): ${bodyError}`;
       if (counter.failure - counter.exceptions < 10) {
         //only log first 10 status failures
@@ -424,6 +427,7 @@ export async function reportAuthCacheStatistics(
 export interface FloodStatistics {
   pid: number[];
   authFetchCache: {
+    pod_count: number;
     stats: AuthFetchCacheStats;
     durations: AuthFetchCacheDurationStats;
   };
@@ -464,6 +468,7 @@ export function makeStatistics(
   return {
     pid: [pid],
     authFetchCache: {
+      pod_count: authFetchCache.accountInfos.length,
       stats: authFetchCache.toStatsObj(),
       durations: authCacheStatsToObj(authFetchCache),
     },
@@ -563,8 +568,8 @@ export function sumStatistics(floodStats: FloodStatistics[]): FloodStatistics {
   return {
     pid: floodStats.map((fs) => fs.pid).flat(),
     authFetchCache: {
+      pod_count: first.authFetchCache.pod_count,
       stats: {
-        cssBaseUrl: first.authFetchCache.stats.cssBaseUrl,
         authenticateCache: first.authFetchCache.stats.authenticateCache,
         authenticate: first.authFetchCache.stats.authenticate,
         lenCssTokensByUser: sum(
@@ -635,14 +640,17 @@ export async function stepLoadAuthCache(
   userCount: number
 ) {
   console.log(`Loading auth cache from '${authCacheFile}'`);
-  await authFetchCache.load(authCacheFile);
-  console.log(`Auth cache now has '${authFetchCache.toCountString()}'`);
+  await floodState.authFetchCache.load(authCacheFile);
+  console.log(
+    `Auth cache now has '${floodState.authFetchCache.toCountString()}'`
+  );
 
   //print info about loaded Access Tokens
   let earliestATexpiration: Date | null = null;
   let earliestATUserIndex: number | null = null;
   for (let userIndex = 0; userIndex < userCount; userIndex++) {
-    const accessToken = authFetchCache.authAccessTokenByUser[userIndex];
+    const accessToken =
+      floodState.authFetchCache.authAccessTokenByUser[userIndex];
     if (
       accessToken != null &&
       (earliestATexpiration == null ||
@@ -659,7 +667,7 @@ export async function stepLoadAuthCache(
   );
   console.log(
     `     Loaded AuthCache metadata: ${JSON.stringify(
-      authFetchCache.loadedAuthCacheMeta,
+      floodState.authFetchCache.loadedAuthCacheMeta,
       null,
       3
     )}`
@@ -848,9 +856,9 @@ async function generateNonConflictingN3PatchData(
   const target = storage.targets[index];
 
   const quadToStr = (
-    subject: RDF.Quad_Subject,
-    predicate: RDF.Quad_Predicate,
-    object: RDF.Quad_Object
+    subject: Quad_Subject,
+    predicate: Quad_Predicate,
+    object: Quad_Object
   ): string => {
     const writer = new N3.Writer({
       format: "text/n3",
@@ -938,34 +946,37 @@ export async function stepFlood(
     const durationMillis = cli.durationS * 1000;
 
     //Execute as many fetches as needed to fill the requested time.
-    let curUserId = 0;
-    const fetchIndexForUser: number[] = Array(cli.userCount).fill(
+    let curPodId = 0;
+    console.assert(
+      cli.podCount <= floodState.pods.length,
+      `not enough pods known (${floodState.pods.length}) for requesting flood test with ${cli.podCount} pods`
+    );
+    const fetchIndexForPod: number[] = Array(cli.podCount).fill(
       cli.filenameIndexingStart
     );
 
     const requestMaker = () => {
-      const userId = curUserId++;
-      if (curUserId >= cli.userCount) {
-        curUserId = 0;
+      const podId = curPodId++;
+      if (curPodId >= cli.podCount) {
+        curPodId = 0;
       }
-      const fetchIndex = fetchIndexForUser[userId]++;
+      const fetchIndex = fetchIndexForPod[podId]++;
       return fetchPodFile(
         cli.scenario,
-        accountInfo,
+        floodState.pods[podId],
         cli.podFilename,
         counter,
-        authFetchCache,
+        floodState.authFetchCache,
         cli.fetchTimeoutMs,
         cli.httpVerb,
         cli.filenameIndexing,
         fetchIndex,
-        cli.cssBaseUrl[0],
         cli.mustUpload,
-        uploadData ? uploadData(userId, fetchIndex) : undefined
+        uploadData ? uploadData(podId, fetchIndex) : undefined
       );
     };
     console.log(
-      `Fetching files from ${cli.userCount} users. Max ${cli.parallel} parallel requests. Will stop after ${cli.durationS} seconds...`
+      `Fetching files from ${cli.podCount} users. Max ${cli.parallel} parallel requests. Will stop after ${cli.durationS} seconds...`
     );
     allFetchStartEnd.start = Date.now();
     for (let p = 0; p < cli.parallel; p++) {
@@ -1002,19 +1013,18 @@ export async function stepFlood(
       i < cli.filenameIndexingStart + cli.fetchCount;
       i++
     ) {
-      for (let j = 0; j < cli.userCount; j++) {
+      for (let j = 0; j < cli.podCount; j++) {
         requests.push(() =>
           fetchPodFile(
             cli.scenario,
-            accountInfo,
+            floodState.pods[j],
             cli.podFilename,
             counter,
-            authFetchCache,
+            floodState.authFetchCache,
             cli.fetchTimeoutMs,
             cli.httpVerb,
             cli.filenameIndexing,
             i,
-            cli.cssBaseUrl[0],
             cli.mustUpload,
             uploadData ? uploadData(j, i) : undefined
           )
@@ -1025,8 +1035,8 @@ export async function stepFlood(
       promises.push(awaitUntilEmpty(requests));
     }
     console.log(
-      `Fetching ${cli.fetchCount} files from ${cli.userCount} users (= ${
-        cli.fetchCount * cli.userCount
+      `Fetching ${cli.fetchCount} files from ${cli.podCount} pods (= ${
+        cli.fetchCount * cli.podCount
       } fetches). Max ${cli.parallel} parallel requests...`
     );
     allFetchStartEnd.start = Date.now();
@@ -1117,7 +1127,7 @@ export async function runNamedStep(
     case "saveAuthHeaders": {
       if (cli.csvFile) {
         await floodState.authFetchCache.saveHeadersAsCsv(
-          cli.cssBaseUrl[0],
+          floodState.pods[0],
           cli.podFilename,
           cli.csvFile
         );

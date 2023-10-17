@@ -2,9 +2,10 @@
 
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CliArgsFlood, HttpVerb } from "./flood-args.js";
-import { Counter, fetchPodFile, FloodState } from "./flood-steps.js";
+import { Counter, fetchPodFile } from "./flood-steps.js";
 import { AnyFetchResponseType } from "../utils/generic-fetch.js";
 import { getNotificationUri } from "../utils/solid-server-detect.js";
+import { FloodState } from "./flood-state.js";
 
 //spec: https://solidproject.org/TR/2022/notifications-protocol-20221231
 //see also: https://communitysolidserver.github.io/CommunitySolidServer/6.x/usage/notifications/
@@ -62,15 +63,15 @@ export async function stepNotificationsSubscribe(
   let curUserIndex = 0;
   for (let i = 0; i < cli.notificationSubscriptionCount; i++) {
     curUserIndex =
-      curUserIndex + 1 >= authFetchCache.accountInfos.length
+      curUserIndex + 1 >= floodState.authFetchCache.accountInfos.length
         ? 0
         : curUserIndex + 1;
 
     const fetchTimeoutMs = 2000;
     try {
-      const pod = authFetchCache.accountInfos[curUserIndex];
-      const aFetch = await authFetchCache.getAuthFetcher(
-        authFetchCache.accountInfos[curUserIndex]
+      const pod = floodState.authFetchCache.accountInfos[curUserIndex];
+      const aFetch = await floodState.authFetchCache.getAuthFetcher(
+        floodState.authFetchCache.accountInfos[curUserIndex]
       );
       const options: any = {
         method: "POST",
@@ -165,8 +166,8 @@ export async function stepNotificationsDelete(
   for (const subscription of notificationSubscriptions) {
     try {
       const account = `user${subscription.userIndex}`;
-      const aFetch = await authFetchCache.getAuthFetcher(
-        authFetchCache.accountInfos[subscription.userIndex]
+      const aFetch = await floodState.authFetchCache.getAuthFetcher(
+        floodState.authFetchCache.accountInfos[subscription.userIndex]
       );
       const options: any = {
         method: "DELETE",

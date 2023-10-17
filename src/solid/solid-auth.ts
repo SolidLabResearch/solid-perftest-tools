@@ -15,7 +15,7 @@ import {
   getAccountInfo,
 } from "../populate/css-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
-import { MachineLoginMethod, PodAndOwnerInfo } from "../common/account";
+import { MachineLoginMethod, PodAndOwnerInfo } from "../common/account.js";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;

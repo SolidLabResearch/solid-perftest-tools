@@ -15,7 +15,6 @@ import { webcrypto } from "node:crypto";
 import { getCliArgs, HttpVerb } from "./flood-args.js";
 import {
   Counter,
-  FloodState,
   FloodStatistics,
   reportAuthCacheStatistics,
   reportFinalStatistics,
@@ -26,18 +25,12 @@ import {
 import { fork } from "child_process";
 import { ControllerMsg, WorkerMsg } from "./flood-messages.js";
 import { MessageCheat } from "./message-cheat.js";
-import { getAccountCreateOrders, PodAndOwnerInfo } from "../common/account.js";
+import { initFloodstate } from "./flood-state.js";
 
 async function main() {
   const cli = getCliArgs();
 
-  const accounts: PodAndOwnerInfo[] = await getPodAndOwnerInfo(cli);
-  const authFetchCache = new AuthFetchCache(
-    cli,
-    accounts,
-    cli.authenticate,
-    cli.authenticateCache
-  );
+  const floodState = await initFloodstate(cli);
 
   let counter = new Counter();
   const allFetchStartEnd: { start: number | null; end: number | null } = {
@@ -52,7 +45,7 @@ async function main() {
   }
 
   if (!cli.steps.includes("flood")) {
-    await reportAuthCacheStatistics(authFetchCache, cli.reportFile);
+    await reportAuthCacheStatistics(floodState.authFetchCache, cli.reportFile);
     console.log(`--steps does not include flood: will exit now`);
     process.exit(0);
   }
@@ -64,7 +57,7 @@ async function main() {
     reportFinalStatistics(
       counter,
       allFetchStartEnd,
-      authFetchCache,
+      floodState.authFetchCache,
       cli.reportFile
     ).finally(() => process.exit(1));
   });
@@ -75,7 +68,7 @@ async function main() {
     await reportFinalStatistics(
       counter,
       allFetchStartEnd,
-      authFetchCache,
+      floodState.authFetchCache,
       cli.reportFile
     );
   } else {
@@ -170,8 +163,11 @@ async function main() {
       });
       processIndex += 1;
       p.process.send({
-        messageType: "SetCache",
-        authCacheContent: JSON.stringify(await authFetchCache.dump()),
+        messageType: "SetFloodState",
+        authCacheContent: JSON.stringify(
+          await floodState.authFetchCache.dump()
+        ),
+        pods: floodState.pods,
       });
     }
     console.log(`Workers configured. Starting flood...`);

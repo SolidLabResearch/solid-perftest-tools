@@ -13,6 +13,7 @@ import fs from "fs";
 import {
   AccountCreateOrder,
   getAccountCreateOrders,
+  getExistingAccountsAndPods,
   PodAndOwnerInfo,
 } from "../common/account.js";
 import { AccountAction } from "../common/cli-args";
@@ -32,7 +33,7 @@ async function main() {
     //TODO handle Auto and Create differently
     createdUserInfos = await generateAccountsAndPods(cli, accountCreateOrders);
   } else {
-    //TODO fetch info about existing accounts? Or make sure CLI provides it?
+    createdUserInfos = await getExistingAccountsAndPods(cli);
   }
 
   const authFetchCache = new AuthFetchCache(cli, createdUserInfos, true, "all");

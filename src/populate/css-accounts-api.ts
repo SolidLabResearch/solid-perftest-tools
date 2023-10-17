@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
 import { CliArgsCommon } from "../common/cli-args.js";
-import { AccountCreateOrder } from "../common/account";
+import { AccountCreateOrder } from "../common/account.js";
 
 //see
 // https://github.com/CommunitySolidServer/CommunitySolidServer/blob/b02c8dcac1ca20eb61af62a648e0fc68cecc7dd2/documentation/markdown/usage/account/json-api.md
