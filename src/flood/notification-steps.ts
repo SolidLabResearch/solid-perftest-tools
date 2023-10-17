@@ -4,7 +4,7 @@ import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CliArgsFlood, HttpVerb } from "./flood-args.js";
 import { Counter, fetchPodFile } from "./flood-steps.js";
 import { AnyFetchResponseType } from "../utils/generic-fetch.js";
-import { getNotificationUri } from "../utils/solid-server-detect.js";
+import { discoverNotificationUri } from "../utils/solid-server-detect.js";
 import { FloodState } from "./flood-state.js";
 
 //spec: https://solidproject.org/TR/2022/notifications-protocol-20221231
@@ -81,7 +81,10 @@ export async function stepNotificationsSubscribe(
 
       //TODO: the .notifications/ URL is currently hardcoded. It is cleaner to find this URL automatically.
       //      See https://communitysolidserver.github.io/CommunitySolidServer/6.x/usage/notifications/
-      const url = getNotificationUri(pod.podUri, cli.notificationChannelType);
+      const url = await discoverNotificationUri(
+        pod.podUri,
+        cli.notificationChannelType
+      );
       options.headers = {
         "Content-type": "application/ld+json",
       };

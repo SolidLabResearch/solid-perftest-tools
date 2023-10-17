@@ -1,10 +1,5 @@
 import crypto from "crypto";
-import {
-  addAuthZFile,
-  addAuthZFiles,
-  createAccount,
-  uploadPodFile,
-} from "../solid/solid-upload.js";
+import { addAuthZFiles, uploadPodFile } from "../solid/solid-upload.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
 import {

@@ -12,7 +12,7 @@ import { AnyFetchType } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
 import { CliArgsPopulate } from "./populate-args.js";
 import { AccountAction, AccountSource } from "../common/cli-args.js";
-import { generateAccountsAndPodsFromList } from "./generate-account-pod.js";
+import { generateAccountsAndPods } from "./generate-account-pod.js";
 
 export type { PodAndOwnerInfo } from "../common/account.js";
 
@@ -81,7 +81,7 @@ export async function populateServersFromDir({
         )}`
       );
       currentCreatedUsersInfo = (
-        await generateAccountsAndPodsFromList(cli, accounts)
+        await generateAccountsAndPods(cli, accounts)
       ).map((p) => ({ ...p, dir }));
     } else {
       //TODO get info on existing accounts, or throw error

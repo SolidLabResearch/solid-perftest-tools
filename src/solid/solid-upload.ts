@@ -31,7 +31,8 @@ export async function createAccount(
   cli: CliArgsPopulate,
   accountCreateOrder: AccountCreateOrder
 ): Promise<PodAndOwnerInfo> {
-  let try1, try6, try7;
+  //We assume accountCreateOrder.createAccountMethod and accountCreateOrder.createAccountUri are correct at all time!
+  //Our caller should have checked this.
 
   const accountApiInfo = await getAccountApiInfo(
     cli,
