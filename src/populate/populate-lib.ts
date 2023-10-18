@@ -103,6 +103,7 @@ export async function populateServersFromDir({
       true,
       "all"
     );
+    await authFetchCache.discoverMachineLoginMethods();
 
     await populatePodsFromDir(
       createdUsersInfo,

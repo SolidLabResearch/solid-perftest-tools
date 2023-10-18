@@ -13,7 +13,16 @@ import { promises as fs } from "fs";
 import * as jose from "jose";
 import { fromNow } from "../utils/time-helpers.js";
 import nodeFetch from "node-fetch";
-import { PodAndOwnerInfo } from "../common/account.js";
+import {
+  CreateAccountMethod,
+  MachineLoginMethod,
+  PodAndOwnerInfo,
+} from "../common/account.js";
+import {
+  discoverCreateAccountTypeAndUri,
+  discoverMachineLoginTypeAndUri,
+  getServerBaseUrl,
+} from "../utils/solid-server-detect";
 
 export interface AuthFetchCacheStats {
   authenticateCache: "none" | "token" | "all";
@@ -86,6 +95,33 @@ export class AuthFetchCache {
         );
       }
       i++;
+    }
+  }
+
+  async discoverMachineLoginMethods(): Promise<void> {
+    const machineLoginInfoByServer: {
+      [url: string]: [MachineLoginMethod, string];
+    } = {};
+
+    //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
+    for (const accountInfo of this.accountInfos) {
+      if (!accountInfo.machineLoginMethod) {
+        const serverBaseUrl = getServerBaseUrl(
+          accountInfo.machineLoginUri || accountInfo.oidcIssuer
+        );
+        if (!machineLoginInfoByServer[serverBaseUrl]) {
+          machineLoginInfoByServer[serverBaseUrl] =
+            await discoverMachineLoginTypeAndUri(
+              this.cli,
+              serverBaseUrl,
+              accountInfo.machineLoginMethod,
+              accountInfo.machineLoginUri
+            );
+        }
+
+        [accountInfo.machineLoginMethod, accountInfo.machineLoginUri] =
+          machineLoginInfoByServer[serverBaseUrl];
+      }
     }
   }
 

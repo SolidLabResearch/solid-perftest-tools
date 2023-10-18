@@ -37,6 +37,7 @@ async function main() {
   }
 
   const authFetchCache = new AuthFetchCache(cli, createdUserInfos, true, "all");
+  await authFetchCache.discoverMachineLoginMethods();
 
   for (const createdUserInfo of createdUserInfos) {
     //create dummy.txt

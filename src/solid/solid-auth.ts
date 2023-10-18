@@ -36,32 +36,29 @@ export async function createUserToken(
   fetcher: AnyFetchType = fetch,
   durationCounter: DurationCounter | null = null
 ): Promise<UserToken> {
+  //we assume that pod.machineLoginMethod and pod.machineLoginUri are correct
+  //because they have been found/checked with discoverMachineLoginTypeAndUri by the caller
   cli.v2("Creating Token (client-credential)...");
 
-  cli.v2("Checking Account API info...");
-  const basicAccountApiInfo = await getAccountApiInfo(
-    cli,
-    // `${pod.baseUrl}.account/`
-    `${pod.machineLoginUri}`
-  );
   const startTime = new Date().getTime();
   try {
-    if (basicAccountApiInfo && basicAccountApiInfo?.controls?.account?.create) {
-      cli.v2(`Account API confirms v7`);
-
-      return await createUserTokenv7(
+    if (pod.machineLoginMethod === MachineLoginMethod.CSS_V7) {
+      const basicAccountApiInfo = await getAccountApiInfo(
         cli,
-        pod.username,
-        pod.password,
-        fetcher,
-        basicAccountApiInfo
+        `${pod.machineLoginUri}`
       );
+      console.assert(
+        basicAccountApiInfo !== null,
+        "basicAccountApiInfo === NULL which is unexpected"
+      );
+      return await createUserTokenv7(cli, pod, fetcher, basicAccountApiInfo!);
+    } else if (pod.machineLoginMethod === MachineLoginMethod.CSS_V6) {
+      return await createUserTokenv6(cli, pod, fetcher);
     } else {
-      cli.v2(`Account API is not v7`);
+      throw new Error(
+        `machineLoginMethod ${pod.machineLoginMethod} is not supported.`
+      );
     }
-
-    cli.v2(`Assuming account API v6`);
-    return await createUserTokenv6(cli, pod, fetcher);
   } finally {
     if (durationCounter !== null) {
       durationCounter.addDuration(new Date().getTime() - startTime);
@@ -122,8 +119,7 @@ export async function createUserTokenv6(
 
 export async function createUserTokenv7(
   cli: CliArgsCommon,
-  account: string,
-  password: string,
+  pod: PodAndOwnerInfo,
   fetcher: AnyFetchType = fetch,
   accountApiInfo: AccountApiInfo
 ): Promise<UserToken> {
@@ -131,8 +127,8 @@ export async function createUserTokenv7(
   const cookieHeader = await accountLogin(
     cli,
     accountApiInfo,
-    accountEmail(account),
-    "password"
+    pod.email,
+    pod.password
   );
 
   ////// Get WebID from account info /////
@@ -160,7 +156,7 @@ export async function createUserTokenv7(
     cli,
     cookieHeader,
     webId,
-    account,
+    pod.username,
     fullAccountApiInfo
   );
 }

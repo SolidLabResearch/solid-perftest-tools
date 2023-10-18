@@ -195,7 +195,7 @@ export async function createClientCredential(
   cli: CliArgsCommon,
   cookieHeader: string,
   webId: string,
-  account: string,
+  username: string,
   fullAccountApiInfo: AccountApiInfo
 ): Promise<UserToken> {
   cli.v2("Creating Token (client credential)...");
@@ -237,7 +237,7 @@ export async function createClientCredential(
   }
   if (!res || !res.ok) {
     console.error(
-      `${res.status} - Creating token for ${account} failed:`,
+      `${res.status} - Creating token for ${username} failed:`,
       body
     );
     throw new ResponseError(res, body);

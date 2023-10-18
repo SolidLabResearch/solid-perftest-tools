@@ -1,6 +1,10 @@
 import { CreateAccountMethod, MachineLoginMethod } from "../common/account";
-import { getAccountApiInfo } from "../populate/css-accounts-api";
+import {
+  AccountApiInfo,
+  getAccountApiInfo,
+} from "../populate/css-accounts-api";
 import { CliArgsCommon } from "../common/cli-args";
+import fetch from "node-fetch";
 
 /**
  * @param anyUri an URI of the target server
@@ -39,6 +43,7 @@ export async function discoverNotificationUri(
  * @param serverBaseUrl the base URL of the server
  * @param createAccountMethod a hint if available
  * @param createAccountUri a hint if available
+ * @param alwaysVerify if true, prefer to contact server each time for verification, even if sanity check passes.
  *
  * @return the discovered CreateAccountMethod method and URI. If no way to create account, or unknown, returns [CreateAccountMethod.NONE, ''].
  */
@@ -46,23 +51,72 @@ export async function discoverCreateAccountTypeAndUri(
   cli: CliArgsCommon,
   serverBaseUrl: string,
   createAccountMethod?: CreateAccountMethod,
-  createAccountUri?: string
+  createAccountUri?: string,
+  alwaysVerify: boolean = true
 ): Promise<[CreateAccountMethod, string]> {
+  //TODO don't ignore createAccountMethod, createAccountUri and alwaysVerify
+  //     these can make this work without server calls
+
+  //Check V7
   const accountApiInfo = await getAccountApiInfo(
     cli,
     `${serverBaseUrl}.account/`
   );
-  if (accountApiInfo && accountApiInfo?.controls?.account?.create) {
-    cli.v2(`Account API confirms v7`);
+  if (accountApiInfo?.controls?.account?.create) {
+    cli.v3(
+      `discoverCreateAccountTypeAndUri returns [CSS_V7, '${serverBaseUrl}.account/']`
+    );
     return [CreateAccountMethod.CSS_V7, `${serverBaseUrl}.account/`];
   }
-  //TODO detect v1 or v6
-  //GET https://pod.playground.solidlab.be/idp/ ?
-  //GET https://pod.playground.solidlab.be/.account/ ?
-  //https://pod.playground.solidlab.be/idp/register/ ?
-  //https://pod.playground.solidlab.be/.account/register/ ?
 
-  return [CreateAccountMethod.CSS_V6, "todo"];
+  //Check V6
+  //for V6, there is a body?.controls?.register endpoint, which V7 does not have.
+  for (const idpUriPart of ["idp", ".account"]) {
+    const discoverTryIdpUri = `${serverBaseUrl}${idpUriPart}/`;
+    const discoverTryIdpResp = await fetch(discoverTryIdpUri, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    cli.v3(`discoverTryIdpResp.status`, discoverTryIdpResp.status);
+
+    if (discoverTryIdpResp.ok) {
+      const body: any = await discoverTryIdpResp.json();
+      if (
+        body?.controls?.register &&
+        body?.controls?.register.startsWith("http")
+      ) {
+        cli.v3(
+          `discoverCreateAccountTypeAndUri returns [CSS_V6, '${body?.controls?.register}']`
+        );
+        return [CreateAccountMethod.CSS_V6, body?.controls?.register];
+      } else {
+        cli.v1(
+          `discoverCreateAccountTypeAndUri got unexpected reply on ${discoverTryIdpUri}, '${body?.controls?.register}']. ` +
+            `Will assume not this version/uri.`
+        );
+      }
+    }
+
+    //Note: For CSS v6, we get this
+    //curl 'https://example.com/idp/' -X GET -H 'Accept: application/json'
+    // {
+    //   "apiVersion" : "0.4",
+    //     "controls" : {
+    //       "credentials" : "https://example.com/idp/credentials/",
+    //       "forgotPassword" : "https://example.com/idp/forgotpassword/",
+    //       "index" : "https://example.com/idp/",
+    //       "login" : "https://example.com/idp/login/",
+    //       "prompt" : "https://example.com/idp/prompt/",
+    //       "register" : "https://example.com/idp/register/"
+    //    }
+    // }
+  }
+
+  cli.v1(
+    `discoverCreateAccountTypeAndUri did not find any CreateAccountMethod.`
+  );
+  return [CreateAccountMethod.NONE, "error"];
 }
 
 /**
@@ -83,5 +137,71 @@ export async function discoverMachineLoginTypeAndUri(
   machineLoginMethod?: MachineLoginMethod,
   machineLoginUri?: string
 ): Promise<[MachineLoginMethod, string]> {
-  return [MachineLoginMethod.CSS_V7, "todo"];
+  //If both filled in, do sanity check and assume correct if it passes. Don't contact server.
+  //    (Reason: In most cases, this info comes from populate and will be correct)
+  //
+  //If not sane, or either method or uri not filled in, query server to find out which method will work
+
+  //TODO implement. See createUserToken in sold-auth.js
+
+  //Check V7
+  const accountApiInfo: AccountApiInfo | null = await getAccountApiInfo(
+    cli,
+    `${serverBaseUrl}.account/`
+  );
+  if (accountApiInfo?.controls?.account?.create) {
+    cli.v3(
+      `discoverMachineLoginTypeAndUri returns [CSS_V7, '${serverBaseUrl}.account/']`
+    );
+    return [MachineLoginMethod.CSS_V7, `${serverBaseUrl}.account/`];
+  }
+
+  //Check V6
+  //for V6, there is a body?.controls?.credentials endpoint, which V7 does not have.
+  for (const idpUriPart of ["idp", ".account"]) {
+    const discoverTryIdpUri = `${serverBaseUrl}${idpUriPart}/`;
+    const discoverTryIdpResp = await fetch(discoverTryIdpUri, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+    });
+
+    cli.v3(`discoverTryIdpResp.status`, discoverTryIdpResp.status);
+
+    if (discoverTryIdpResp.ok) {
+      const body: any = await discoverTryIdpResp.json();
+      if (
+        body?.controls?.credentials &&
+        body?.controls?.credentials.startsWith("http")
+      ) {
+        cli.v3(
+          `discoverMachineLoginTypeAndUri returns [CSS_V6, '${body?.controls?.credentials}']`
+        );
+        return [MachineLoginMethod.CSS_V6, body?.controls?.credentials];
+      } else {
+        cli.v1(
+          `discoverMachineLoginTypeAndUri got unexpected reply on ${discoverTryIdpUri}, '${body?.controls?.credentials}']. ` +
+            `Will assume not this version/uri.`
+        );
+      }
+    }
+
+    //Note: For CSS v6, we get this
+    //curl 'https://example.com/idp/' -X GET -H 'Accept: application/json'
+    // {
+    //   "apiVersion" : "0.4",
+    //     "controls" : {
+    //       "credentials" : "https://example.com/idp/credentials/",
+    //       "forgotPassword" : "https://example.com/idp/forgotpassword/",
+    //       "index" : "https://example.com/idp/",
+    //       "login" : "https://example.com/idp/login/",
+    //       "prompt" : "https://example.com/idp/prompt/",
+    //       "register" : "https://example.com/idp/register/"
+    //    }
+    // }
+  }
+
+  cli.v1(
+    `discoverMachineLoginTypeAndUri did not find any CreateAccountMethod.`
+  );
+  return [MachineLoginMethod.NONE, "error"];
 }

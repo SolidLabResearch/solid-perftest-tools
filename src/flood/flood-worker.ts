@@ -85,6 +85,7 @@ async function main() {
           cli.authenticate,
           cli.authenticateCache
         );
+        await authFetchCache.discoverMachineLoginMethods();
         console.assert(authFetchCache.authAccessTokenByUser !== null);
         await authFetchCache.loadString(message.authCacheContent);
         // await authFetchCache.validate(cli.userCount, cli.ensureAuthExpirationS);

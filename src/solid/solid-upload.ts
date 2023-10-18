@@ -34,66 +34,31 @@ export async function createAccount(
   //We assume accountCreateOrder.createAccountMethod and accountCreateOrder.createAccountUri are correct at all time!
   //Our caller should have checked this.
 
-  const accountApiInfo = await getAccountApiInfo(
-    cli,
-    // `${server.baseUrl}.account/`
-    accountCreateOrder.createAccountUri! //should not be undefined at this point
-  );
-  if (accountApiInfo && accountApiInfo?.controls?.account?.create) {
-    cli.v2(`Account API confirms v7`);
-    try1 = false;
-    try6 = false;
-    try7 = true;
-  } else {
-    cli.v2(`Account API unclear`);
-    try1 = true;
-    try6 = true;
-    try7 = false;
-  }
-
-  let mustCreatePod = true;
-  let res: PodAndOwnerInfo | null = null;
-
-  cli.v2(`Accounts API variants to try: 1=${try1} 6=${try6} 7=${try7}`);
-
-  if (try1 && mustCreatePod) {
-    [mustCreatePod, res] = await createPodAccountsApi1and6(
+  if (accountCreateOrder.createAccountMethod === CreateAccountMethod.CSS_V6) {
+    return await createPodAccountsApi6(cli, accountCreateOrder);
+  } else if (
+    accountCreateOrder.createAccountMethod === CreateAccountMethod.CSS_V7
+  ) {
+    const accountApiInfo = await getAccountApiInfo(
       cli,
-      accountCreateOrder
+      accountCreateOrder.createAccountUri! //should not be undefined at this point
     );
-  }
-
-  if (try6 && mustCreatePod) {
-    [mustCreatePod, res] = await createPodAccountsApi1and6(
-      cli,
-      accountCreateOrder
-    );
-  }
-
-  if (try7 && mustCreatePod) {
-    [mustCreatePod, res] = await createPodAccountsApi7(
+    return await createPodAccountsApi7(
       cli,
       accountCreateOrder,
       accountApiInfo!
     );
-  }
-
-  if (mustCreatePod || !res) {
-    console.error(
-      `createPod: Accounts API problem: 404 for all Accounts API variants`
-    );
-    throw new Error(
-      `createPod: Accounts API problem: 404 for all Accounts API variants`
+  } else {
+    throw Error(
+      `CreateAccountMethod ${accountCreateOrder.createAccountMethod} is not supported`
     );
   }
-
-  return res;
 }
 
-export async function createPodAccountsApi1and6(
+export async function createPodAccountsApi6(
   cli: CliArgsPopulate,
   accountCreateOrder: AccountCreateOrder
-): Promise<[boolean, PodAndOwnerInfo | null]> {
+): Promise<PodAndOwnerInfo> {
   if (!accountCreateOrder.createAccountUri) {
     throw Error("createAccountUri may not be empty");
   }
@@ -132,16 +97,15 @@ export async function createPodAccountsApi1and6(
   cli.v3(`res.ok`, res.ok, `res.status`, res.status);
 
   if (res.status == 404) {
-    cli.v1(`404 registering user: incompatible IdP path`);
+    cli.v1(`${res.status} registering user: incompatible IdP path`);
 
-    return [true, null];
+    throw Error(`${res.status} registering user: incompatible IdP path`);
   }
 
   const body = await res.text();
   if (!res.ok) {
     if (body.includes("Account already exists")) {
-      //ignore
-      return [false, null];
+      throw Error(`${res.status} registering user: Account already exists`);
     }
 
     if (body.includes("outside the configured identifier space")) {
@@ -149,7 +113,7 @@ export async function createPodAccountsApi1and6(
         `error registering account ${accountCreateOrder.username} (${res.status} - ${body}): assuming incompatible IdP path`
       );
 
-      return [true, null];
+      throw Error(`${res.status} registering user: incompatible IdP path`);
     }
 
     console.error(
@@ -161,23 +125,20 @@ export async function createPodAccountsApi1and6(
 
   const jsonResponse = JSON.parse(body);
   cli.v3(`Created account info: ${JSON.stringify(jsonResponse, null, 3)}`);
-  return [
-    false,
-    {
-      index: accountCreateOrder.index,
-      webID: jsonResponse.webId, //`${cssBaseUrl}${account}/profile/card#me`,
-      podUri: jsonResponse.podBaseUrl, //`${cssBaseUrl}${account}/`,
-      username: accountCreateOrder.podName, //username is never passed to CSS in this version
-      password: accountCreateOrder.password,
-      email: accountCreateOrder.email,
-      machineLoginMethod:
-        accountCreateOrder.createAccountMethod == CreateAccountMethod.CSS_V6
-          ? MachineLoginMethod.CSS_V6
-          : MachineLoginMethod.NONE,
-      machineLoginUri: `${serverBaseUrl}${idpPath}/credentials/`,
-      oidcIssuer: serverBaseUrl,
-    },
-  ];
+  return {
+    index: accountCreateOrder.index,
+    webID: jsonResponse.webId, //`${cssBaseUrl}${account}/profile/card#me`,
+    podUri: jsonResponse.podBaseUrl, //`${cssBaseUrl}${account}/`,
+    username: accountCreateOrder.podName, //username is never passed to CSS in this version
+    password: accountCreateOrder.password,
+    email: accountCreateOrder.email,
+    machineLoginMethod:
+      accountCreateOrder.createAccountMethod == CreateAccountMethod.CSS_V6
+        ? MachineLoginMethod.CSS_V6
+        : MachineLoginMethod.NONE,
+    machineLoginUri: `${serverBaseUrl}${idpPath}/credentials/`,
+    oidcIssuer: serverBaseUrl,
+  };
 }
 
 /**
@@ -191,7 +152,7 @@ export async function createPodAccountsApi7(
   cli: CliArgsPopulate,
   accountCreateOrder: AccountCreateOrder,
   basicAccountApiInfo: AccountApiInfo
-): Promise<[boolean, PodAndOwnerInfo | null]> {
+): Promise<PodAndOwnerInfo> {
   if (!accountCreateOrder.createAccountUri) {
     throw Error("createAccountUri may not be empty");
   }
@@ -203,7 +164,7 @@ export async function createPodAccountsApi7(
   );
   if (!cookieHeader) {
     cli.v1(`404 registering user: incompatible Accounts API path`);
-    return [true, null];
+    throw Error(`404 registering user: incompatible IdP path`);
   }
 
   //We have an account now! And the cookies to use it.
@@ -215,11 +176,11 @@ export async function createPodAccountsApi7(
     cookieHeader
   );
   if (!fullAccountApiInfo) {
-    return [true, null];
+    throw Error(`error registering user: missing .account api info`);
   }
   if (!fullAccountApiInfo.controls?.password?.create) {
     cli.v1(`Account API is missing expected fields`);
-    return [true, null];
+    throw Error(`error registering user: incompatible .account api info`);
   }
 
   /// Create a password for the account ////
@@ -233,7 +194,7 @@ export async function createPodAccountsApi7(
   );
   if (!passwordCreated) {
     //user already existed. We ignore that.
-    return [false, null];
+    throw Error(`error registering user: user already exists`);
   }
 
   /// Create a pod and link the WebID in it ////
@@ -245,7 +206,7 @@ export async function createPodAccountsApi7(
   );
   if (!createdPod) {
     //pod not created
-    return [true, null];
+    throw Error(`error registering user: failed to create pod`);
   }
 
   const createdAccountInfo = await getAccountInfo(
@@ -254,20 +215,17 @@ export async function createPodAccountsApi7(
     fullAccountApiInfo
   );
   const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
-  return [
-    false,
-    {
-      index: accountCreateOrder.index,
-      webID: Object.keys(createdAccountInfo.webIds)[0],
-      podUri: Object.keys(createdAccountInfo.pods)[0],
-      username: accountCreateOrder.podName,
-      password: accountCreateOrder.password,
-      email: accountCreateOrder.email,
-      machineLoginMethod: MachineLoginMethod.CSS_V7,
-      machineLoginUri: `${serverBaseUrl}.account/credentials/`,
-      oidcIssuer: serverBaseUrl,
-    },
-  ];
+  return {
+    index: accountCreateOrder.index,
+    webID: Object.keys(createdAccountInfo.webIds)[0],
+    podUri: Object.keys(createdAccountInfo.pods)[0],
+    username: accountCreateOrder.podName,
+    password: accountCreateOrder.password,
+    email: accountCreateOrder.email,
+    machineLoginMethod: MachineLoginMethod.CSS_V7,
+    machineLoginUri: `${serverBaseUrl}.account/credentials/`,
+    oidcIssuer: serverBaseUrl,
+  };
 }
 
 export async function uploadPodFile(

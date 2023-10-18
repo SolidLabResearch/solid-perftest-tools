@@ -23,6 +23,7 @@ export async function initFloodstate(cli: CliArgsFlood): Promise<FloodState> {
     cli.authenticate,
     cli.authenticateCache
   );
+  await authFetchCache.discoverMachineLoginMethods();
 
   return {
     authFetchCache: authFetchCache,
