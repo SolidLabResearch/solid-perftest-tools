@@ -1,9 +1,12 @@
-import { CreateAccountMethod, MachineLoginMethod } from "../common/account";
+import {
+  CreateAccountMethod,
+  MachineLoginMethod,
+} from "../common/interfaces.js";
 import {
   AccountApiInfo,
   getAccountApiInfo,
-} from "../populate/css-accounts-api";
-import { CliArgsCommon } from "../common/cli-args";
+} from "../populate/css-accounts-api.js";
+import { CliArgsCommon } from "../common/cli-args.js";
 import fetch from "node-fetch";
 
 /**

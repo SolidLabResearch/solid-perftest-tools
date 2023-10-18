@@ -3,28 +3,12 @@
 import yargs, { Arguments, CamelCaseKey } from "yargs";
 import { hideBin } from "yargs/helpers";
 import {
+  AccountAction,
+  AccountSource,
   CreateAccountMethod,
   createAccountMethodStrings,
   CreateAccountMethodStringsType,
-} from "./account.js";
-
-export enum AccountAction {
-  UseExisting,
-  Create,
-  Auto,
-}
-
-export enum AccountSource {
-  File,
-  Template,
-}
-
-export enum SolidServerAccountApiVersion {
-  NONE = "NONE", //No account API!
-  CSS_V1 = "CSS_V1",
-  CSS_V6 = "CSS_V6",
-  CSS_V7 = "CSS_V7",
-}
+} from "./interfaces.js";
 
 export interface CliArgsCommon {
   verbosity_count: number;

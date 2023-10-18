@@ -18,7 +18,7 @@ import {
   CreateAccountMethod,
   MachineLoginMethod,
   PodAndOwnerInfo,
-} from "../common/account.js";
+} from "../common/interfaces.js";
 import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 
 /**

@@ -6,11 +6,11 @@ import {
   AccountCreateOrder,
   CreateAccountMethod,
   PodAndOwnerInfo,
-} from "../common/account.js";
+} from "../common/interfaces.js";
 import {
   discoverCreateAccountTypeAndUri,
   getServerBaseUrl,
-} from "../utils/solid-server-detect";
+} from "../utils/solid-server-detect.js";
 
 export async function generateAccountsAndPods(
   cli: CliArgsPopulate,

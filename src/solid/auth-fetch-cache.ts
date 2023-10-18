@@ -17,12 +17,12 @@ import {
   CreateAccountMethod,
   MachineLoginMethod,
   PodAndOwnerInfo,
-} from "../common/account.js";
+} from "../common/interfaces.js";
 import {
   discoverCreateAccountTypeAndUri,
   discoverMachineLoginTypeAndUri,
   getServerBaseUrl,
-} from "../utils/solid-server-detect";
+} from "../utils/solid-server-detect.js";
 
 export interface AuthFetchCacheStats {
   authenticateCache: "none" | "token" | "all";

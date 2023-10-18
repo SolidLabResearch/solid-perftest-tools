@@ -1,9 +1,6 @@
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
-import {
-  AccountCreateOrder,
-  getExistingAccountsAndPods,
-  PodAndOwnerInfo,
-} from "../common/account.js";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
+import { getExistingAccountsAndPods } from "../common/account.js";
 import { CliArgsFlood } from "./flood-args.js";
 
 export interface FloodState {

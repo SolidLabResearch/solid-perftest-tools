@@ -6,15 +6,15 @@ import {
   PodAndOwnerInfoAndDirInfo,
   populatePodsFromDir,
 } from "./populate-from-dir.js";
-import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import nodeFetch from "node-fetch";
 import { CliArgsPopulate } from "./populate-args.js";
-import { AccountAction, AccountSource } from "../common/cli-args.js";
+import { AccountAction, AccountSource } from "../common/interfaces.js";
 import { generateAccountsAndPods } from "./generate-account-pod.js";
 
-export type { PodAndOwnerInfo } from "../common/account.js";
+export type { PodAndOwnerInfo } from "../common/interfaces.js";
 
 export async function populateServersFromDir({
   verbose,

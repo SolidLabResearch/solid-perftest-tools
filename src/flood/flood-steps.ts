@@ -43,7 +43,7 @@ import {
   stepNotificationsDelete,
   stepNotificationsSubscribe,
 } from "./notification-steps.js";
-import { AccountCreateOrder, PodAndOwnerInfo } from "../common/account.js";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
 import { FloodState } from "./flood-state.js";
 
 export function generateUploadData(

@@ -2,8 +2,8 @@
 
 import { CliArgsFlood, StepName } from "./flood-args.js";
 import { FloodStatistics } from "./flood-steps.js";
-import { FloodState } from "./flood-state";
-import { PodAndOwnerInfo } from "../common/account";
+import { FloodState } from "./flood-state.js";
+import { PodAndOwnerInfo } from "../common/interfaces.js";
 
 export interface WorkerAnnounce {
   messageType: "WorkerAnnounce";

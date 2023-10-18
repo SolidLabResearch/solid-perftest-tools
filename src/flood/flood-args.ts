@@ -6,7 +6,7 @@ import {
   CliArgsCommon,
   getArgvCommon,
   processYargsCommon,
-} from "../common/cli-args";
+} from "../common/cli-args.js";
 
 export type StepName =
   | "loadAC"

@@ -1,5 +1,5 @@
 import { AnyFetchType } from "../utils/generic-fetch.js";
-import { PodAndOwnerInfo } from "../common/account.js";
+import { PodAndOwnerInfo } from "../common/interfaces.js";
 
 export function makeAcrContent(
   pod: PodAndOwnerInfo,

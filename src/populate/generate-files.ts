@@ -9,7 +9,7 @@ import {
   RDFTypeValues,
 } from "../utils/rdf-helpers.js";
 import { CliArgsPopulate } from "./populate-args.js";
-import { PodAndOwnerInfo } from "../common/account.js";
+import { PodAndOwnerInfo } from "../common/interfaces.js";
 
 function generateContent(byteCount: number): ArrayBuffer {
   return crypto.randomBytes(byteCount).buffer; //fetch can handle ArrayBuffer

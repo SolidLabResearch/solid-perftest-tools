@@ -14,7 +14,7 @@ import {
   AccountCreateOrder,
   accountEmail,
   PodAndOwnerInfo,
-} from "../common/account.js";
+} from "../common/interfaces.js";
 
 export interface AccountCreateOrderAndDirInfo extends AccountCreateOrder {
   dir: string;

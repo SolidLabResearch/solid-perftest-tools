@@ -10,13 +10,12 @@ import { generateAccountsAndPods } from "./generate-account-pod.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { getCliArgs } from "./populate-args.js";
 import fs from "fs";
+import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
 import {
-  AccountCreateOrder,
   getAccountCreateOrders,
   getExistingAccountsAndPods,
-  PodAndOwnerInfo,
 } from "../common/account.js";
-import { AccountAction } from "../common/cli-args";
+import { AccountAction } from "../common/interfaces.js";
 import { uploadPodFile } from "../solid/solid-upload.js";
 import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
 
