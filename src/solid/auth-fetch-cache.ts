@@ -99,6 +99,8 @@ export class AuthFetchCache {
   }
 
   async discoverMachineLoginMethods(): Promise<void> {
+    this.cli.v3(`Starting discoverMachineLoginMethods()...`);
+
     const machineLoginInfoByServer: {
       [url: string]: [MachineLoginMethod, string];
     } = {};
@@ -118,7 +120,7 @@ export class AuthFetchCache {
               accountInfo.machineLoginUri
             );
 
-          this.cli.v3(
+          this.cli.v2(
             `discovered machine login method for ${serverBaseUrl}: ` +
               `${machineLoginInfoByServer[serverBaseUrl][0]} ${machineLoginInfoByServer[serverBaseUrl][1]}`
           );
@@ -128,6 +130,12 @@ export class AuthFetchCache {
           machineLoginInfoByServer[serverBaseUrl];
       }
     }
+
+    this.cli.v3(
+      `discoverMachineLoginMethods() found methods for ${
+        Object.keys(machineLoginInfoByServer).length
+      } servers.`
+    );
   }
 
   expireAccessToken(userId: number) {

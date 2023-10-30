@@ -38,7 +38,7 @@ export async function createUserToken(
 ): Promise<UserToken> {
   //we assume that pod.machineLoginMethod and pod.machineLoginUri are correct
   //because they have been found/checked with discoverMachineLoginTypeAndUri by the caller
-  cli.v2("Creating Token (client-credential)...");
+  cli.v2("Creating User Token...");
 
   const startTime = new Date().getTime();
   try {

@@ -198,7 +198,7 @@ export async function createClientCredential(
   username: string,
   fullAccountApiInfo: AccountApiInfo
 ): Promise<UserToken> {
-  cli.v2("Creating Token (client credential)...");
+  cli.v2("Creating Client Credential...");
   const clientCredentialsEndpoint =
     fullAccountApiInfo.controls?.account?.clientCredentials;
   if (!clientCredentialsEndpoint) {
