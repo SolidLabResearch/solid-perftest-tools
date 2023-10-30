@@ -43,14 +43,14 @@ let ya = yargs(hideBin(process.argv))
     demandOption: false,
   })
   //in the future, --url will not be mandatory, because you'll also be able to specify a file with SolidServerInfo, or a template and count (for example, for a hundred servers)
-  .option("url", {
-    group: "CSS Server:",
-    alias: "u",
-    type: "string",
-    description: "Base URL of the CSS",
-    demandOption: true,
-    array: true,
-  })
+  // .option("url", {
+  //   group: "CSS Server:",
+  //   alias: "u",
+  //   type: "string",
+  //   description: "Base URL of the CSS",
+  //   demandOption: true,
+  //   array: true,
+  // })
 
   .option("accounts", {
     group: "Accounts:",
@@ -143,9 +143,9 @@ let ya = yargs(hideBin(process.argv))
   })
   .help()
   .check((argvc, options) => {
-    if (argvc.url.length < 1) {
-      return "--url should be specified at least once";
-    }
+    // if (argvc.url.length < 1) {
+    //   return "--url should be specified at least once";
+    // }
 
     if (argvc.accountSource == "FILE" && !argvc.accountSourceFile) {
       return "--account-source ${argvc.accountSource} requires --account-source-file";
@@ -191,29 +191,6 @@ let ya = yargs(hideBin(process.argv))
       return `--accounts ${argvc.accounts} --account-source ${argvc.accountSource} requires --account-template-pod-uri`;
     }
 
-    if (argvc.generateFixedSize && !argvc.userCount) {
-      return "--generate-fixed-size requires --user-count";
-    }
-    if (argvc.generateFixedSize && !argvc.fileSize) {
-      return "--generate-fixed-size requires --file-size";
-    }
-    if (argvc.generateFixedSize && !argvc.fileCount) {
-      return "--generate-fixed-size requires --file-count";
-    }
-    if (argvc.generateFromDir && !argvc.dir) {
-      return "--generate-from-dir requires --dir";
-    }
-    if (argvc.generateRdf && !argvc.baseRdfFile) {
-      return "--generate-rdf requires --base-rdf-file";
-    }
-    if (
-      !argvc.generateFromDir &&
-      !argvc.generateVariableSize &&
-      !argvc.generateRdf &&
-      !argvc.generateFixedSize
-    ) {
-      return "select at least one --generate-xxx option";
-    }
     return true;
   });
 
@@ -225,7 +202,7 @@ type ArgvCommonType = typeof ya;
 // };
 type ParsedArgvCommonType = {
   v: number;
-  url: string[];
+  // url: string[];
   accounts: string;
   accountSource: string;
   accountSourceCount: number | undefined;
