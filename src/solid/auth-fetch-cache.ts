@@ -99,7 +99,9 @@ export class AuthFetchCache {
   }
 
   async discoverMachineLoginMethods(): Promise<void> {
-    this.cli.v3(`Starting discoverMachineLoginMethods()...`);
+    this.cli.v3(
+      `Starting discoverMachineLoginMethods() for ${this.accountInfos.length} accounts...`
+    );
 
     const machineLoginInfoByServer: {
       [url: string]: [MachineLoginMethod, string];
@@ -107,7 +109,7 @@ export class AuthFetchCache {
 
     //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
     for (const accountInfo of this.accountInfos) {
-      if (!accountInfo.machineLoginMethod) {
+      if (!accountInfo.machineLoginMethod || !accountInfo.machineLoginUri) {
         const serverBaseUrl = getServerBaseUrl(
           accountInfo.machineLoginUri || accountInfo.oidcIssuer
         );
