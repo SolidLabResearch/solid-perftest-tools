@@ -117,6 +117,11 @@ export class AuthFetchCache {
               accountInfo.machineLoginMethod,
               accountInfo.machineLoginUri
             );
+
+          this.cli.v3(
+            `discovered machine login method for ${serverBaseUrl}: ` +
+              `${machineLoginInfoByServer[serverBaseUrl][0]} ${machineLoginInfoByServer[serverBaseUrl][1]}`
+          );
         }
 
         [accountInfo.machineLoginMethod, accountInfo.machineLoginUri] =

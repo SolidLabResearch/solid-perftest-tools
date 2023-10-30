@@ -81,7 +81,7 @@ export async function createUserTokenv6(
     !pod.machineLoginUri
   ) {
     throw new Error(
-      'There is no machine login method (like "client-credential" known for the pod)'
+      `There is no machine login method known for the pod. machineLoginMethod=${pod.machineLoginMethod} machineLoginUri=${pod.machineLoginUri}`
     );
   }
   try {
