@@ -73,13 +73,11 @@ export async function discoverCreateAccountTypeAndUri(
   } else {
     if (accountApiInfo?.controls?.main?.logins) {
       cli.v3(
-        `discoverCreateAccountTypeAndUri returns [CSS_V7, '${serverBaseUrl}.account/'] BUT account creation is probably not activated (no accountApiInfo?.controls?.account?.create)!`
+        `discoverCreateAccountTypeAndUri returns [CSS_V7, '${serverBaseUrl}.account/'] BUT account creation is probably not activated (no controls.account.create)!`
       );
       return [CreateAccountMethod.CSS_V7, `${serverBaseUrl}.account/`];
     } else {
-      cli.v3(
-        `not CSS_V7: no controls.account.create or accountApiInfo?.controls?.main?.logins`
-      );
+      cli.v3(`not CSS_V7: no controls.account.create or controls.main.logins`);
     }
   }
 
