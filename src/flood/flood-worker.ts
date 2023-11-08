@@ -37,7 +37,7 @@ async function main() {
   let stopped = false;
   let processIndex: number | undefined = undefined;
   let cli: CliArgsFlood | null = null;
-  let fetcher: AnyFetchType | null = null;
+  // let fetcher: AnyFetchType | null = null;
   let floodState: FloodState | null = null;
   let counter = new Counter();
   const allFetchStartEnd: { start: number | null; end: number | null } = {
@@ -75,7 +75,7 @@ async function main() {
         break;
       }
       case "SetFloodState": {
-        if (cli == null || fetcher == null) {
+        if (cli == null /*|| fetcher == null*/) {
           throw new Error(`SetFloodState called before SetCliArgs`);
         }
         const pods = message.pods;
@@ -99,7 +99,7 @@ async function main() {
         try {
           if (
             cli == null ||
-            fetcher == null ||
+            // fetcher == null ||
             floodState == null ||
             floodState.authFetchCache == null
           ) {
