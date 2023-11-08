@@ -177,8 +177,18 @@ export async function createUserTokenv7(
     throw new ResponseError(webIdInfoResp, body);
   }
   const webIdInfo = await webIdInfoResp.json();
+  /*
+    Example content:
+       {
+         "fields": { "webId": { "required": true, "type": "string" } },
+         "webIdLinks": {
+              "https://n065-05.wall2.ilabt.iminds.be/user0/profile/card#me": "https://n065-05.wall2.ilabt.iminds.be/.account/account/5b3bf772-16f1-427b-926f-1958acd5fe61/webid/b6687e62-1b6f-49c2-a695-2f86d99cc4b2/"
+         },
+       ...
+  */
+
   cli.v3(`webIdInfo`, webIdInfo);
-  const webId = (<any>webIdInfo)[0];
+  const webId = Object.keys((<any>webIdInfo)?.webIdLinks)[0];
 
   if (!webId) {
     throw new Error(
