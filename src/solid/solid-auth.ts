@@ -45,7 +45,7 @@ export async function createUserToken(
     if (pod.machineLoginMethod === MachineLoginMethod.CSS_V7) {
       const basicAccountApiInfo = await getAccountApiInfo(
         cli,
-        `${pod.machineLoginUri}`
+        `${pod.machineLoginUri}` //for v7, this is the .account URL
       );
       console.assert(
         basicAccountApiInfo !== null,

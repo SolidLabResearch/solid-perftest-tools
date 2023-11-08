@@ -252,7 +252,7 @@ export async function createPodAccountsApi7(
     password: accountCreateOrder.password,
     email: accountCreateOrder.email,
     machineLoginMethod: MachineLoginMethod.CSS_V7,
-    machineLoginUri: `${serverBaseUrl}.account/credentials/`,
+    machineLoginUri: createdAccountInfo.controls?.main?.index, //for V7, the machineLoginUri is the .account URI  //less generic: `${serverBaseUrl}.account/`,
     oidcIssuer: serverBaseUrl,
   };
 }
