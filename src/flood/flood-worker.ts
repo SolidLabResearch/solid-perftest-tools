@@ -52,7 +52,19 @@ async function main() {
     );
     switch (message.messageType) {
       case "SetCliArgs": {
-        cli = message.cliArgs;
+        const v = message.cliArgs.verbosity_count;
+        cli = {
+          ...message.cliArgs,
+          v3: (message?: any, ...optionalParams: any[]) => {
+            if (v >= 3) console.log(message, ...optionalParams);
+          },
+          v2: (message?: any, ...optionalParams: any[]) => {
+            if (v >= 2) console.log(message, ...optionalParams);
+          },
+          v1: (message?: any, ...optionalParams: any[]) => {
+            if (v >= 1) console.log(message, ...optionalParams);
+          },
+        };
         //override fetchCount with the part of the fetchCount for this process
         console.log(
           `Overriding for process ${process.pid}: ` +
