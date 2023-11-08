@@ -147,7 +147,7 @@ export async function createUserTokenv7(
     cookieHeader,
     fullAccountApiInfo
   );
-  const webId = Object.keys(accountInfo.webIds)[0];
+  const webId = accountInfo.controls.account.webId; //Object.keys(accountInfo.webIds)[0];
   cli.v2("WebID found", webId);
 
   ////// Create Token (client credential) /////

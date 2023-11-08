@@ -215,7 +215,10 @@ export async function createPodAccountsApi7(
     fullAccountApiInfo
   );
 
-  if (!createdAccountInfo.webIds && !createdAccountInfo.webId) {
+  if (
+    // !createdAccountInfo.webIds &&
+    !createdAccountInfo?.controls?.account?.webId
+  ) {
     throw Error(
       `error registering user: created account has no webID! account info: ${JSON.stringify(
         createdAccountInfo,
@@ -224,10 +227,12 @@ export async function createPodAccountsApi7(
       )}`
     );
   }
-  const webId =
-    createdAccountInfo.webId || Object.keys(createdAccountInfo.webIds)[0];
+  const webId = createdAccountInfo?.controls?.account?.webId; // || Object.keys(createdAccountInfo.webIds)[0];
 
-  if (!createdAccountInfo.pods && !createdAccountInfo.pod) {
+  if (
+    //!createdAccountInfo.pods &&
+    !createdAccountInfo?.controls?.account?.pod
+  ) {
     throw Error(
       `error registering user: created account has no pod! account info: ${JSON.stringify(
         createdAccountInfo,
@@ -236,7 +241,7 @@ export async function createPodAccountsApi7(
       )}`
     );
   }
-  const pod = createdAccountInfo.pod || Object.keys(createdAccountInfo.pods)[0];
+  const pod = createdAccountInfo?.controls?.account?.pod; // || Object.keys(createdAccountInfo.pods)[0];
 
   const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
   return {
