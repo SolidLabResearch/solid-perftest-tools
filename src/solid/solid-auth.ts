@@ -183,7 +183,7 @@ export async function createUserTokenv7(
   if (!webId) {
     throw new Error(
       `Failed to find webId in account info: ${JSON.stringify(
-        accountInfo,
+        webIdInfo,
         null,
         3
       )}`
