@@ -42,16 +42,6 @@ let ya = yargs(hideBin(process.argv))
       "Verbosity. The more times this option is added, the more messages are printed.",
     demandOption: false,
   })
-  //in the future, --url will not be mandatory, because you'll also be able to specify a file with SolidServerInfo, or a template and count (for example, for a hundred servers)
-  // .option("url", {
-  //   group: "CSS Server:",
-  //   alias: "u",
-  //   type: "string",
-  //   description: "Base URL of the CSS",
-  //   demandOption: true,
-  //   array: true,
-  // })
-
   .option("accounts", {
     group: "Accounts:",
     type: "string",
@@ -143,10 +133,6 @@ let ya = yargs(hideBin(process.argv))
   })
   .help()
   .check((argvc, options) => {
-    // if (argvc.url.length < 1) {
-    //   return "--url should be specified at least once";
-    // }
-
     if (argvc.accountSource == "FILE" && !argvc.accountSourceFile) {
       return "--account-source ${argvc.accountSource} requires --account-source-file";
     }

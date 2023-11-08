@@ -947,17 +947,18 @@ export async function stepFlood(
 
     //Execute as many fetches as needed to fill the requested time.
     let curPodId = 0;
+    const podCount = cli.podCount == 0 ? floodState.pods.length : cli.podCount;
     console.assert(
-      cli.podCount <= floodState.pods.length,
-      `not enough pods known (${floodState.pods.length}) for requesting flood test with ${cli.podCount} pods`
+      podCount <= floodState.pods.length,
+      `not enough pods known (${floodState.pods.length}) for requesting flood test with ${podCount} pods`
     );
-    const fetchIndexForPod: number[] = Array(cli.podCount).fill(
+    const fetchIndexForPod: number[] = Array(podCount).fill(
       cli.filenameIndexingStart
     );
 
     const requestMaker = () => {
       const podId = curPodId++;
-      if (curPodId >= cli.podCount) {
+      if (curPodId >= podCount) {
         curPodId = 0;
       }
       const fetchIndex = fetchIndexForPod[podId]++;
@@ -976,7 +977,7 @@ export async function stepFlood(
       );
     };
     console.log(
-      `Fetching files from ${cli.podCount} users. Max ${cli.parallel} parallel requests. Will stop after ${cli.durationS} seconds...`
+      `Fetching files from ${podCount} users. Max ${cli.parallel} parallel requests. Will stop after ${cli.durationS} seconds...`
     );
     allFetchStartEnd.start = Date.now();
     for (let p = 0; p < cli.parallel; p++) {
@@ -1013,7 +1014,7 @@ export async function stepFlood(
       i < cli.filenameIndexingStart + cli.fetchCount;
       i++
     ) {
-      for (let j = 0; j < cli.podCount; j++) {
+      for (let j = 0; j < podCount; j++) {
         requests.push(() =>
           fetchPodFile(
             cli.scenario,
@@ -1035,8 +1036,8 @@ export async function stepFlood(
       promises.push(awaitUntilEmpty(requests));
     }
     console.log(
-      `Fetching ${cli.fetchCount} files from ${cli.podCount} pods (= ${
-        cli.fetchCount * cli.podCount
+      `Fetching ${cli.fetchCount} files from ${podCount} pods (= ${
+        cli.fetchCount * podCount
       } fetches). Max ${cli.parallel} parallel requests...`
     );
     allFetchStartEnd.start = Date.now();
@@ -1060,16 +1061,18 @@ export async function runNamedStep(
 ) {
   const stepStart = new Date().getTime();
 
+  const podCount = cli.podCount == 0 ? floodState.pods.length : cli.podCount;
+
   switch (stepName) {
     case "loadAC": {
       if (cli.authCacheFile && fs.existsSync(cli.authCacheFile)) {
-        await stepLoadAuthCache(floodState, cli.authCacheFile, cli.podCount);
+        await stepLoadAuthCache(floodState, cli.authCacheFile, podCount);
       }
       break;
     }
     case "fillAC": {
       await floodState.authFetchCache.preCache(
-        cli.podCount,
+        podCount,
         cli.ensureAuthExpirationS + 30
       );
       console.log(
@@ -1078,10 +1081,7 @@ export async function runNamedStep(
       break;
     }
     case "validateAC": {
-      floodState.authFetchCache.validate(
-        cli.podCount,
-        cli.ensureAuthExpirationS
-      );
+      floodState.authFetchCache.validate(podCount, cli.ensureAuthExpirationS);
       break;
     }
     case "testRequest": {
@@ -1094,7 +1094,7 @@ export async function runNamedStep(
     }
     case "testRequests": {
       await floodState.authFetchCache.test(
-        cli.podCount,
+        podCount,
         cli.podFilename,
         cli.fetchTimeoutMs
       );

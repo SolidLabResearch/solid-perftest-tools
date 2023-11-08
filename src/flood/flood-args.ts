@@ -37,7 +37,7 @@ const ALLOWED_STEPS: StepName[] = [
 ];
 
 let ya = getArgvCommon()
-  .usage("Usage: $0 --url <url> [--steps <steps>] ...")
+  .usage("Usage: $0 [--steps <steps>] ...")
   //general options
   .option("steps", {
     group: "Base:",
