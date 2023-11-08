@@ -288,15 +288,15 @@ export async function uploadPodFile(
     // console.log(`res.text`, body);
     if (!res.ok) {
       console.error(
-        `${res.status} - Uploading to account ${pod.username}, pod path "${podFileRelative}" failed:`
+        `${res.status} (${res.statusText}) - Uploading to account ${pod.username}, pod path "${podFileRelative}" failed:`
       );
       console.error(body);
 
-      if (retryCount < 5) {
+      if (res.status === 408 && retryCount < 5) {
         retry = true;
         retryCount += 1;
         console.error(
-          "Got 408 Request Timeout. That's strange... Will retry. (max 5 times)"
+          `Got ${res.status} (${res.statusText}). That's strange... Will retry. (max 5 times)`
         );
       } else {
         throw new ResponseError(res, body);
