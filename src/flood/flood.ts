@@ -96,9 +96,10 @@ async function main() {
     let filenameIndexingStart = cli.filenameIndexingStart;
     const changeIndex = cli.filenameIndexing && !cli.durationS;
     for (let index = 0; index < cli.processCount; index++) {
-      const worker_exe = new URL("./solid-flood-worker", import.meta.url)
-        .toString()
-        .replace("file:/", "");
+      // const worker_exe = new URL("./solid-flood-worker", import.meta.url)
+      //   .toString()
+      //   .replace("file:/", "");
+      const worker_exe = "solid-flood-worker";
       const processFetchCount = fQuotient + (index < fRemainder ? 1 : 0);
       const parallelFetchCount = pQuotient + (index < pRemainder ? 1 : 0);
       if (parallelFetchCount === 0) {
