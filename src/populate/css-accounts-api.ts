@@ -47,6 +47,11 @@ export interface AccountInfo {
     [webid: string]: string;
     // "http://localhost:3000/test/profile/card#me": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/webid/5c1b70d3ffaa840394dda86889ed1569cf897ef3d6041fb4c9513f82144cbb7f/";
   };
+
+  //some versions seem to have:
+  pod?: string;
+  webId?: string;
+
   clientCredentials: {
     [name: string]: string;
     // "token_562cdeb5-d4b2-4905-9e62-8969ac10daaa": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/client-credentials/token_562cdeb5-d4b2-4905-9e62-8969ac10daaa/";
