@@ -16,6 +16,7 @@ import {
 } from "../populate/css-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
+import fetch from "node-fetch";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;
@@ -147,7 +148,38 @@ export async function createUserTokenv7(
     cookieHeader,
     fullAccountApiInfo
   );
-  const webId = accountInfo.controls.account.webId; //Object.keys(accountInfo.webIds)[0];
+  const webIdUri = accountInfo.controls.account.webId; //Object.keys(accountInfo.webIds)[0];
+  if (!webIdUri) {
+    throw new Error(
+      `Failed to find webId Uri in account info: ${JSON.stringify(
+        accountInfo,
+        null,
+        3
+      )}`
+    );
+  }
+
+  cli.v2(`Fetching WebID info at ${webIdUri}`);
+  const webIdInfoResp = await fetch(webIdUri, {
+    method: "GET",
+    headers: { Accept: "application/json", Cookie: cookieHeader },
+  });
+  cli.v3(
+    `webIdInfoResp.ok`,
+    webIdInfoResp.ok,
+    `webIdInfoResp.status`,
+    webIdInfoResp.status
+  );
+  if (!webIdInfoResp.ok) {
+    console.error(`${webIdInfoResp.status} - Fetching webID info failed:`);
+    const body = await webIdInfoResp.text();
+    console.error(body);
+    throw new ResponseError(webIdInfoResp, body);
+  }
+  const webIdInfo = await webIdInfoResp.json();
+  cli.v3(`webIdInfo`, webIdInfo);
+  const webId = (<any>webIdInfo)[0];
+
   if (!webId) {
     throw new Error(
       `Failed to find webId in account info: ${JSON.stringify(
