@@ -148,6 +148,15 @@ export async function createUserTokenv7(
     fullAccountApiInfo
   );
   const webId = accountInfo.controls.account.webId; //Object.keys(accountInfo.webIds)[0];
+  if (!webId) {
+    throw new Error(
+      `Failed to find webId in account info: ${JSON.stringify(
+        accountInfo,
+        null,
+        3
+      )}`
+    );
+  }
   cli.v2("WebID found", webId);
 
   ////// Create Token (client credential) /////
