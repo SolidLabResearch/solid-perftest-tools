@@ -913,6 +913,8 @@ export async function stepFlood(
   allFetchStartEnd: { start: number | null; end: number | null },
   processIndex: number
 ) {
+  const podCount = cli.podCount == 0 ? floodState.pods.length : cli.podCount;
+
   const n3PatchStorage =
     cli.scenario == "N3_PATCH"
       ? await prepareN3PatchGenerator(
