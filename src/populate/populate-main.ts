@@ -17,7 +17,7 @@ import {
 } from "../common/account.js";
 import { AccountAction } from "../common/interfaces.js";
 import { uploadPodFile } from "../solid/solid-upload.js";
-import { CONTENT_TYPE_TXT } from "../utils/content-type.js";
+import { CONTENT_TYPE_BYTE, CONTENT_TYPE_TXT } from "../utils/content-type.js";
 
 async function main() {
   const cli = getCliArgs();
@@ -47,7 +47,8 @@ async function main() {
       "DUMMY DATA FOR " + createdUserInfo.username,
       "dummy.txt",
       authFetch,
-      CONTENT_TYPE_TXT,
+      CONTENT_TYPE_BYTE,
+      // CONTENT_TYPE_TXT,
       createdUserInfo.index < 2
     );
   }
