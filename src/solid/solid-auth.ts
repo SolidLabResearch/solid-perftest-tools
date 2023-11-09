@@ -13,10 +13,11 @@ import {
   createClientCredential,
   getAccountApiInfo,
   getAccountInfo,
-} from "../populate/css-accounts-api.js";
+} from "./css-v7-accounts-api";
 import { CliArgsCommon } from "../common/cli-args.js";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
 import fetch from "node-fetch";
+import { getWebIDs } from "./css-v7-accounts-api.js";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;
@@ -148,57 +149,7 @@ export async function createUserTokenv7(
     cookieHeader,
     fullAccountApiInfo
   );
-  const webIdUri = accountInfo.controls.account.webId; //Object.keys(accountInfo.webIds)[0];
-  if (!webIdUri) {
-    throw new Error(
-      `Failed to find webId Uri in account info: ${JSON.stringify(
-        accountInfo,
-        null,
-        3
-      )}`
-    );
-  }
-
-  cli.v2(`Fetching WebID info at ${webIdUri}`);
-  const webIdInfoResp = await fetch(webIdUri, {
-    method: "GET",
-    headers: { Accept: "application/json", Cookie: cookieHeader },
-  });
-  cli.v3(
-    `webIdInfoResp.ok`,
-    webIdInfoResp.ok,
-    `webIdInfoResp.status`,
-    webIdInfoResp.status
-  );
-  if (!webIdInfoResp.ok) {
-    console.error(`${webIdInfoResp.status} - Fetching webID info failed:`);
-    const body = await webIdInfoResp.text();
-    console.error(body);
-    throw new ResponseError(webIdInfoResp, body);
-  }
-  const webIdInfo = await webIdInfoResp.json();
-  /*
-    Example content:
-       {
-         "fields": { "webId": { "required": true, "type": "string" } },
-         "webIdLinks": {
-              "https://n065-05.wall2.ilabt.iminds.be/user0/profile/card#me": "https://n065-05.wall2.ilabt.iminds.be/.account/account/5b3bf772-16f1-427b-926f-1958acd5fe61/webid/b6687e62-1b6f-49c2-a695-2f86d99cc4b2/"
-         },
-       ...
-  */
-
-  cli.v3(`webIdInfo`, webIdInfo);
-  const webId = Object.keys((<any>webIdInfo)?.webIdLinks)[0];
-
-  if (!webId) {
-    throw new Error(
-      `Failed to find webId in account info: ${JSON.stringify(
-        webIdInfo,
-        null,
-        3
-      )}`
-    );
-  }
+  const webId = (await getWebIDs(cli, cookieHeader, accountInfo))[0];
   cli.v2("WebID found", webId);
 
   ////// Create Token (client credential) /////

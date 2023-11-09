@@ -12,7 +12,7 @@ import {
   createPassword,
   getAccountApiInfo,
   getAccountInfo,
-} from "../populate/css-accounts-api.js";
+} from "../solid/css-v7-accounts-api.js";
 import {
   AccountCreateOrder,
   CreateAccountMethod,
@@ -20,6 +20,7 @@ import {
   PodAndOwnerInfo,
 } from "../common/interfaces.js";
 import { getServerBaseUrl } from "../utils/solid-server-detect.js";
+import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 
 /**
  *
@@ -141,122 +142,6 @@ export async function createPodAccountsApi6(
   };
 }
 
-/**
- *
- * @param {string} cli CliArgs
- * @param {SolidServerInfo} server the solid server
- * @param {string} accountCreateOrder The info used to create the account (same value as you would give in the register form online)
- * @param {string} basicAccountApiInfo AccountApiInfo (not logged in)
- */
-export async function createPodAccountsApi7(
-  cli: CliArgsPopulate,
-  accountCreateOrder: AccountCreateOrder,
-  basicAccountApiInfo: AccountApiInfo
-): Promise<PodAndOwnerInfo> {
-  if (!accountCreateOrder.createAccountUri) {
-    throw Error("createAccountUri may not be empty");
-  }
-
-  const cookieHeader = await createEmptyAccount(
-    cli,
-    accountCreateOrder,
-    basicAccountApiInfo
-  );
-  if (!cookieHeader) {
-    cli.v1(`404 registering user: incompatible Accounts API path`);
-    throw Error(`404 registering user: incompatible IdP path`);
-  }
-
-  //We have an account now! And the cookies to use it.
-
-  cli.v2(`Fetching account endpoints...`);
-  const fullAccountApiInfo = await getAccountApiInfo(
-    cli,
-    basicAccountApiInfo.controls.main.index,
-    cookieHeader
-  );
-  if (!fullAccountApiInfo) {
-    throw Error(`error registering user: missing .account api info`);
-  }
-  if (!fullAccountApiInfo.controls?.password?.create) {
-    cli.v1(`Account API is missing expected fields`);
-    throw Error(`error registering user: incompatible .account api info`);
-  }
-
-  /// Create a password for the account ////
-  const passwordCreated = await createPassword(
-    cli,
-    cookieHeader,
-    accountCreateOrder.username,
-    accountCreateOrder.email,
-    accountCreateOrder.password,
-    fullAccountApiInfo
-  );
-  if (!passwordCreated) {
-    //user already existed. We ignore that.
-    throw Error(`error registering user: user already exists`);
-  }
-
-  /// Create a pod and link the WebID in it ////
-  const createdPod = await createAccountPod(
-    cli,
-    cookieHeader,
-    accountCreateOrder.podName,
-    fullAccountApiInfo
-  );
-  if (!createdPod) {
-    //pod not created
-    throw Error(`error registering user: failed to create pod`);
-  }
-
-  const createdAccountInfo = await getAccountInfo(
-    cli,
-    cookieHeader,
-    fullAccountApiInfo
-  );
-
-  if (
-    // !createdAccountInfo.webIds &&
-    !createdAccountInfo?.controls?.account?.webId
-  ) {
-    throw Error(
-      `error registering user: created account has no webID! account info: ${JSON.stringify(
-        createdAccountInfo,
-        null,
-        3
-      )}`
-    );
-  }
-  const webId = createdAccountInfo?.controls?.account?.webId; // || Object.keys(createdAccountInfo.webIds)[0];
-
-  if (
-    //!createdAccountInfo.pods &&
-    !createdAccountInfo?.controls?.account?.pod
-  ) {
-    throw Error(
-      `error registering user: created account has no pod! account info: ${JSON.stringify(
-        createdAccountInfo,
-        null,
-        3
-      )}`
-    );
-  }
-  const pod = createdAccountInfo?.controls?.account?.pod; // || Object.keys(createdAccountInfo.pods)[0];
-
-  const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
-  return {
-    index: accountCreateOrder.index,
-    webID: webId,
-    podUri: pod,
-    username: accountCreateOrder.podName,
-    password: accountCreateOrder.password,
-    email: accountCreateOrder.email,
-    machineLoginMethod: MachineLoginMethod.CSS_V7,
-    machineLoginUri: createdAccountInfo.controls?.main?.index, //for V7, the machineLoginUri is the .account URI  //less generic: `${serverBaseUrl}.account/`,
-    oidcIssuer: serverBaseUrl,
-  };
-}
-
 export async function uploadPodFile(
   cli: CliArgsPopulate,
   pod: PodAndOwnerInfo,
@@ -276,7 +161,8 @@ export async function uploadPodFile(
       );
     }
 
-    const res = await authFetch(`${pod.podUri}/${podFileRelative}`, {
+    const targetUri = `${pod.podUri}/${podFileRelative}`;
+    const res = await authFetch(targetUri, {
       method: "PUT",
       headers: { "content-type": contentType },
       body: fileContent,
@@ -288,7 +174,7 @@ export async function uploadPodFile(
     // console.log(`res.text`, body);
     if (!res.ok) {
       console.error(
-        `${res.status} (${res.statusText}) - Uploading to account ${pod.username}, pod path "${podFileRelative}" failed:`
+        `${res.status} (${res.statusText}) - Uploading to ${targetUri} (account ${pod.username}, pod path "${podFileRelative}") failed:`
       );
       console.error(body);
 

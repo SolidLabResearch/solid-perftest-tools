@@ -1,11 +1,16 @@
+import { CliArgsPopulate } from "../populate/populate-args.js";
+import {
+  AccountCreateOrder,
+  MachineLoginMethod,
+  PodAndOwnerInfo,
+} from "../common/interfaces.js";
+import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
 import { CliArgsCommon } from "../common/cli-args.js";
-import { AccountCreateOrder } from "../common/interfaces.js";
 
 //see
-// https://github.com/CommunitySolidServer/CommunitySolidServer/blob/b02c8dcac1ca20eb61af62a648e0fc68cecc7dd2/documentation/markdown/usage/account/json-api.md
-// https://github.com/CommunitySolidServer/CommunitySolidServer/blob/feat/accounts/documentation/markdown/usage/account/json-api.md
+// https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/account/json-api.md
 
 export interface AccountApiInfo {
   controls: {
@@ -31,29 +36,6 @@ export interface AccountApiInfo {
   };
   version: string; //"0.5"
 }
-
-// export interface AccountInfo {
-//   logins: {
-//     password: {
-//       [email: string]: string;
-//       //"test@example.com": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/login/password/test%40example.com/";
-//     };
-//   };
-//   pods: {
-//     [url: string]: string;
-//     // "http://localhost:3000/test/": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/pod/7def7830df1161e422537db594ad2b7412ffb735e0e2320cf3e90db19cd969f9/";
-//   };
-//   webIds: {
-//     [webid: string]: string;
-//     // "http://localhost:3000/test/profile/card#me": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/webid/5c1b70d3ffaa840394dda86889ed1569cf897ef3d6041fb4c9513f82144cbb7f/";
-//   };
-//
-//   clientCredentials: {
-//     [name: string]: string;
-//     // "token_562cdeb5-d4b2-4905-9e62-8969ac10daaa": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/client-credentials/token_562cdeb5-d4b2-4905-9e62-8969ac10daaa/";
-//   };
-//   settings: any;
-// }
 
 export interface UserToken {
   id: string;
@@ -101,16 +83,6 @@ export async function getAccountInfo(
   fullAccountApiInfo: AccountApiInfo
 ): Promise<AccountApiInfo> {
   const accountInfoUrl = fullAccountApiInfo.controls?.main?.index;
-  // const accountInfoUrl = fullAccountApiInfo.controls?.account?.account;
-  // if (!accountInfoUrl) {
-  //   throw new Error(
-  //     `accountApiInfo.controls.account.account should not be empty. Got: ${JSON.stringify(
-  //       fullAccountApiInfo,
-  //       null,
-  //       3
-  //     )}`
-  //   );
-  // }
   console.assert(
     accountInfoUrl && accountInfoUrl.startsWith("http"),
     "Problem with account info URL",
@@ -433,4 +405,242 @@ export async function createAccountPod(
     throw new ResponseError(podCreateResp, body);
   }
   return true;
+}
+
+/**
+ *
+ * @param {string} cli CliArgs
+ * @param {string} cookieHeader The auth cookie header
+ * @param {string} accountInfo AccountApiInfo (not logged in)
+ */
+export async function getWebIDs(
+  cli: CliArgsCommon,
+  cookieHeader: string,
+  accountInfo: AccountApiInfo
+): Promise<string[]> {
+  const webIdUri = accountInfo.controls.account.webId;
+  if (!webIdUri) {
+    throw new Error(
+      `Failed to find webId Uri in account info: ${JSON.stringify(
+        accountInfo,
+        null,
+        3
+      )}`
+    );
+  }
+
+  cli.v2(`Fetching WebID info at ${webIdUri}`);
+  const webIdInfoResp = await fetch(webIdUri, {
+    method: "GET",
+    headers: { Accept: "application/json", Cookie: cookieHeader },
+  });
+  cli.v3(
+    `webIdInfoResp.ok`,
+    webIdInfoResp.ok,
+    `webIdInfoResp.status`,
+    webIdInfoResp.status
+  );
+  if (!webIdInfoResp.ok) {
+    console.error(`${webIdInfoResp.status} - Fetching webID info failed:`);
+    const body = await webIdInfoResp.text();
+    console.error(body);
+    throw new ResponseError(webIdInfoResp, body);
+  }
+  const webIdInfo = await webIdInfoResp.json();
+  /*
+      Example content:
+         {
+           "fields": { "webId": { "required": true, "type": "string" } },
+           "webIdLinks": {
+                "https://n065-05.wall2.ilabt.iminds.be/user0/profile/card#me": "https://n065-05.wall2.ilabt.iminds.be/.account/account/5b3bf772-16f1-427b-926f-1958acd5fe61/webid/b6687e62-1b6f-49c2-a695-2f86d99cc4b2/"
+           },
+         ...
+    */
+
+  cli.v3(`webIdInfo`, webIdInfo);
+  const webIds = Object.keys((<any>webIdInfo)?.webIdLinks);
+
+  if (webIds.length === 0) {
+    throw new Error(
+      `no WebIDs found: webIdInfo=${JSON.stringify(webIdInfo, null, 3)}`
+    );
+  }
+
+  return webIds;
+}
+
+/**
+ *
+ * @param {string} cli CliArgs
+ * @param {string} cookieHeader The auth cookie header
+ * @param {string} accountInfo AccountApiInfo (not logged in)
+ */
+export async function getPods(
+  cli: CliArgsCommon,
+  cookieHeader: string,
+  accountInfo: AccountApiInfo
+): Promise<string[]> {
+  const podUri = accountInfo.controls.account.pod;
+  if (!podUri) {
+    throw new Error(
+      `Failed to find pod Uri in account info: ${JSON.stringify(
+        accountInfo,
+        null,
+        3
+      )}`
+    );
+  }
+
+  cli.v2(`Fetching pod info at ${podUri}`);
+  const podInfoResp = await fetch(podUri, {
+    method: "GET",
+    headers: { Accept: "application/json", Cookie: cookieHeader },
+  });
+  cli.v3(
+    `podInfoResp.ok`,
+    podInfoResp.ok,
+    `podInfoResp.status`,
+    podInfoResp.status
+  );
+  if (!podInfoResp.ok) {
+    console.error(`${podInfoResp.status} - Fetching pod info failed:`);
+    const body = await podInfoResp.text();
+    console.error(body);
+    throw new ResponseError(podInfoResp, body);
+  }
+  const podInfo = await podInfoResp.json();
+  /*
+      Example content:
+         {
+           "pods": {
+                "http://localhost:3000/test/": "http://localhost:3000/.account/account/c63c9e6f-48f8-40d0-8fec-238da893a7f2/pod/df2d5a06-3ecd-4eaf-ac8f-b88a8579e100/"
+           },
+         ...
+    */
+
+  cli.v3(`podInfo`, podInfo);
+  const pods = Object.keys((<any>podInfo)?.pods);
+
+  if (pods.length === 0) {
+    throw new Error(
+      `no pods found: podInfo=${JSON.stringify(podInfo, null, 3)}`
+    );
+  }
+
+  return pods;
+}
+
+/**
+ *
+ * @param {string} cli CliArgs
+ * @param {string} accountCreateOrder The info used to create the account (same value as you would give in the register form online)
+ * @param {string} basicAccountApiInfo AccountApiInfo (not logged in)
+ */
+export async function createPodAccountsApi7(
+  cli: CliArgsPopulate,
+  accountCreateOrder: AccountCreateOrder,
+  basicAccountApiInfo: AccountApiInfo
+): Promise<PodAndOwnerInfo> {
+  if (!accountCreateOrder.createAccountUri) {
+    throw Error("createAccountUri may not be empty");
+  }
+
+  const cookieHeader = await createEmptyAccount(
+    cli,
+    accountCreateOrder,
+    basicAccountApiInfo
+  );
+  if (!cookieHeader) {
+    cli.v1(`404 registering user: incompatible Accounts API path`);
+    throw Error(`404 registering user: incompatible IdP path`);
+  }
+
+  //We have an account now! And the cookies to use it.
+
+  cli.v2(`Fetching account endpoints...`);
+  const fullAccountApiInfo = await getAccountApiInfo(
+    cli,
+    basicAccountApiInfo.controls.main.index,
+    cookieHeader
+  );
+  if (!fullAccountApiInfo) {
+    throw Error(`error registering user: missing .account api info`);
+  }
+  if (!fullAccountApiInfo.controls?.password?.create) {
+    cli.v1(`Account API is missing expected fields`);
+    throw Error(`error registering user: incompatible .account api info`);
+  }
+
+  /// Create a password for the account ////
+  const passwordCreated = await createPassword(
+    cli,
+    cookieHeader,
+    accountCreateOrder.username,
+    accountCreateOrder.email,
+    accountCreateOrder.password,
+    fullAccountApiInfo
+  );
+  if (!passwordCreated) {
+    //user already existed. We ignore that.
+    throw Error(`error registering user: user already exists`);
+  }
+
+  /// Create a pod and link the WebID in it ////
+  const createdPod = await createAccountPod(
+    cli,
+    cookieHeader,
+    accountCreateOrder.podName,
+    fullAccountApiInfo
+  );
+  if (!createdPod) {
+    //pod not created
+    throw Error(`error registering user: failed to create pod`);
+  }
+
+  const createdAccountInfo = await getAccountInfo(
+    cli,
+    cookieHeader,
+    fullAccountApiInfo
+  );
+
+  if (
+    // !createdAccountInfo.webIds &&
+    !createdAccountInfo?.controls?.account?.webId
+  ) {
+    throw Error(
+      `error registering user: created account has no webID! account info: ${JSON.stringify(
+        createdAccountInfo,
+        null,
+        3
+      )}`
+    );
+  }
+  const webId = (await getWebIDs(cli, cookieHeader, createdAccountInfo))[0];
+
+  if (
+    //!createdAccountInfo.pods &&
+    !createdAccountInfo?.controls?.account?.pod
+  ) {
+    throw Error(
+      `error registering user: created account has no pod! account info: ${JSON.stringify(
+        createdAccountInfo,
+        null,
+        3
+      )}`
+    );
+  }
+  const pod = (await getPods(cli, cookieHeader, createdAccountInfo))[0];
+
+  const serverBaseUrl = getServerBaseUrl(accountCreateOrder.createAccountUri);
+  return {
+    index: accountCreateOrder.index,
+    webID: webId,
+    podUri: pod,
+    username: accountCreateOrder.podName,
+    password: accountCreateOrder.password,
+    email: accountCreateOrder.email,
+    machineLoginMethod: MachineLoginMethod.CSS_V7,
+    machineLoginUri: createdAccountInfo.controls?.main?.index, //for V7, the machineLoginUri is the .account URI  //less generic: `${serverBaseUrl}.account/`,
+    oidcIssuer: serverBaseUrl,
+  };
 }

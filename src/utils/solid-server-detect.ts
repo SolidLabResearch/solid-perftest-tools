@@ -5,7 +5,7 @@ import {
 import {
   AccountApiInfo,
   getAccountApiInfo,
-} from "../populate/css-accounts-api.js";
+} from "../solid/css-v7-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import fetch from "node-fetch";
 
