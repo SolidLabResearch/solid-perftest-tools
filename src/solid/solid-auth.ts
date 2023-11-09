@@ -13,7 +13,7 @@ import {
   createClientCredential,
   getAccountApiInfo,
   getAccountInfo,
-} from "./css-v7-accounts-api";
+} from "./css-v7-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
 import fetch from "node-fetch";
