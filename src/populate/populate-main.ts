@@ -18,6 +18,7 @@ import {
 import { AccountAction } from "../common/interfaces.js";
 import { uploadPodFile } from "../solid/solid-upload.js";
 import { CONTENT_TYPE_BYTE, CONTENT_TYPE_TXT } from "../utils/content-type.js";
+import { join_uri } from "../utils/uri_helper.js";
 
 async function main() {
   const cli = getCliArgs();
@@ -97,7 +98,7 @@ async function main() {
       createdUserInfos.map((p) => ({
         ...p,
         //QUICK hack to match dirs with users
-        dir: `${cli.generatedDataBaseDir}/${p.username}`,
+        dir: join_uri(cli.generatedDataBaseDir!, p.username),
       })),
       authFetchCache,
       cli,

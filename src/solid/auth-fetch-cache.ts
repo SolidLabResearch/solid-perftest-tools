@@ -23,6 +23,7 @@ import {
   discoverMachineLoginTypeAndUri,
   getServerBaseUrl,
 } from "../utils/solid-server-detect.js";
+import { join_uri } from "../utils/uri_helper.js";
 
 export interface AuthFetchCacheStats {
   authenticateCache: "none" | "token" | "all";
@@ -405,7 +406,7 @@ export class AuthFetchCache {
           accountInfo.username
         })...\r`
       );
-      const testUrl = `${accountInfo.podUri}/${filename}`;
+      const testUrl = join_uri(accountInfo.podUri, filename);
       try {
         const aFetch = await this.getAuthFetcher(accountInfo);
         const res: AnyFetchResponseType = await aFetch(testUrl, {
@@ -527,7 +528,7 @@ export class AuthFetchCache {
       userIndex++
     ) {
       const account = `user${userIndex}`;
-      const resourceUrl = `${pod.podUri}/${podFilename}`;
+      const resourceUrl = join_uri(pod.podUri, podFilename);
 
       const [authHeaders, accessToken] = await getFetchAuthHeaders(
         this.cli,
