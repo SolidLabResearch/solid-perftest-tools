@@ -405,29 +405,27 @@ export class AuthFetchCache {
           accountInfo.username
         })...\r`
       );
+      const testUrl = `${accountInfo.podUri}/${filename}`;
       try {
         const aFetch = await this.getAuthFetcher(accountInfo);
-        const res: AnyFetchResponseType = await aFetch(
-          `${accountInfo.podUri}/${filename}`,
-          {
-            method: "GET",
-            //open bug in nodejs typescript that AbortSignal.timeout doesn't work
-            //  see https://github.com/node-fetch/node-fetch/issues/741
-            // @ts-ignore
-            signal: AbortSignal.timeout(fetchTimeoutMs), // abort after 4 seconds //supported in nodejs>=17.3
-          }
-        );
+        const res: AnyFetchResponseType = await aFetch(testUrl, {
+          method: "GET",
+          //open bug in nodejs typescript that AbortSignal.timeout doesn't work
+          //  see https://github.com/node-fetch/node-fetch/issues/741
+          // @ts-ignore
+          signal: AbortSignal.timeout(fetchTimeoutMs), // abort after 4 seconds //supported in nodejs>=17.3
+        });
         if (!res.ok) {
           allSuccess = false;
           console.error(
-            `         Authentication test failed for user ${accountInfo.username}. HTTP status ${res.status}`
+            `         Authentication test failed for user ${accountInfo.username} (GET ${testUrl}). HTTP status ${res.status}`
           );
           console.error(`            Error message: ${await res.text()}`);
         } else {
           const body = await res.text();
           if (!body) {
             console.error(
-              `         Authentication test failed for user ${accountInfo.username}: no body`
+              `         Authentication test failed for user ${accountInfo.username} (GET ${testUrl}): no body`
             );
             allSuccess = false;
           }
@@ -435,7 +433,7 @@ export class AuthFetchCache {
       } catch (e) {
         allSuccess = false;
         console.error(
-          `         Authentication test exception for user ${accountInfo.username}`,
+          `         Authentication test exception for user ${accountInfo.username} (GET ${testUrl})`,
           e
         );
       }
