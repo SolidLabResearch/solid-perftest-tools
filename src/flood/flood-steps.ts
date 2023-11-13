@@ -48,6 +48,7 @@ import { FloodState } from "./flood-state.js";
 import { join_uri } from "../utils/uri_helper.js";
 
 export function generateUploadData(
+  cli: CliArgsFlood,
   httpVerb: HttpVerb,
   uploadSizeByte: number
 ): ArrayBuffer {
@@ -60,7 +61,7 @@ export function generateUploadData(
   // }
 
   const durationMs = new Date().getTime() - startTime;
-  console.debug(
+  cli.v3(
     `Generating random data for upload took ${durationMs}ms (for ${uploadSizeByte} bytes)`
   );
   return res;
@@ -939,7 +940,7 @@ export async function stepFlood(
           )
       : cli.mustUpload
       ? async (userId: number, requestId: number) =>
-          generateUploadData(cli.httpVerb, cli.uploadSizeByte)
+          generateUploadData(cli, cli.httpVerb, cli.uploadSizeByte)
       : undefined;
 
   const requests = [];
