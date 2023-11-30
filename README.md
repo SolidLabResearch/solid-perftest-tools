@@ -21,4 +21,4 @@ TODO
 
 # License
 
-This code is copyrighted by [Ghent University – imec](http://idlab.ugent.be/) and released under the [MIT license](http://opensource.org/licenses/MIT).
+This code is copyrighted by [Ghent University – imec](http://idlab.ugent.be/) and released under the [EUPLv1.2 license](https://opensource.org/license/eupl-1-2/).
