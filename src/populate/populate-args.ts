@@ -158,7 +158,7 @@ export function getCliArgs(): CliArgsPopulate {
         return "--generate-rdf requires --base-rdf-file";
       }
       if (
-        argv.accounts != "CREATE" &&
+        argvc.accounts != "CREATE" &&
         !argvc.generateFromDir &&
         !argvc.generateVariableSize &&
         !argvc.generateRdf &&
