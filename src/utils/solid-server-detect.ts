@@ -8,7 +8,7 @@ import {
 } from "../solid/css-v7-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import fetch from "node-fetch";
-import { dropDir, joinUri } from "./uri_helper";
+import { dropDir, joinUri } from "./uri_helper.js";
 
 /**
  * @param anyUri an URI of the target server
