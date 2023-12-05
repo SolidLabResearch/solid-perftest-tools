@@ -45,7 +45,7 @@ import {
 } from "./notification-steps.js";
 import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
 import { FloodState } from "./flood-state.js";
-import { join_uri } from "../utils/uri_helper.js";
+import { joinUri } from "../utils/uri_helper.js";
 
 export function generateUploadData(
   cli: CliArgsFlood,
@@ -261,7 +261,7 @@ export async function fetchPodFile(
       }
     }
 
-    const url = join_uri(pod.podUri, podFileRelative);
+    const url = joinUri(pod.podUri, podFileRelative);
     const res: AnyFetchResponseType = await aFetch(url, options);
     counter.statuses[res.status] = (counter.statuses[res.status] || 0) + 1;
 

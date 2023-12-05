@@ -8,6 +8,7 @@ import {
 } from "../solid/css-v7-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import fetch from "node-fetch";
+import { dropDir, joinUri } from "./uri_helper";
 
 /**
  * @param anyUri an URI of the target server
@@ -161,59 +162,98 @@ export async function discoverMachineLoginTypeAndUri(
   //TODO implement. See createUserToken in sold-auth.js
 
   //Check V7
-  const accountApiInfo: AccountApiInfo | null = await getAccountApiInfo(
-    cli,
-    `${serverBaseUrl}.account/`
-  );
-  if (accountApiInfo?.controls?.account?.create) {
+  let candidateUrls = [`${serverBaseUrl}.account/`];
+  if (machineLoginUri) {
+    candidateUrls.push(machineLoginUri);
+    //TODO drop dirs to root, adding account each time
+
+    let maxDepth = 3;
+
+    let last = machineLoginUri;
+    candidateUrls.push(joinUri(last, ".account/"));
+    let next = dropDir(last);
+    while (last != next && maxDepth-- > 0 && next != serverBaseUrl) {
+      candidateUrls.push(joinUri(next, ".account/"));
+      next = dropDir(next);
+    }
+  }
+  for (const candidateUrl of candidateUrls) {
     cli.v3(
-      `discoverMachineLoginTypeAndUri returns [CSS_V7, '${serverBaseUrl}.account/']`
+      `discoverMachineLoginTypeAndUri CSS_V7 test will test '${candidateUrl}'`
     );
-    return [MachineLoginMethod.CSS_V7, `${serverBaseUrl}.account/`];
+    const accountApiInfo: AccountApiInfo | null = await getAccountApiInfo(
+      cli,
+      candidateUrl
+    );
+    if (accountApiInfo?.controls?.account?.create) {
+      cli.v3(
+        `discoverMachineLoginTypeAndUri returns [CSS_V7, '${candidateUrl}']`
+      );
+      return [MachineLoginMethod.CSS_V7, candidateUrl];
+    }
   }
 
   //Check V6
   //for V6, there is a body?.controls?.credentials endpoint, which V7 does not have.
   for (const idpUriPart of ["idp", ".account"]) {
-    const discoverTryIdpUri = `${serverBaseUrl}${idpUriPart}/`;
-    const discoverTryIdpResp = await fetch(discoverTryIdpUri, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-    });
+    candidateUrls = [`${serverBaseUrl}${idpUriPart}/`];
+    if (machineLoginUri) {
+      candidateUrls.push(machineLoginUri);
+      //TODO drop dirs to root, adding account each time
 
-    cli.v3(`discoverTryIdpResp.status`, discoverTryIdpResp.status);
+      let maxDepth = 3;
 
-    if (discoverTryIdpResp.ok) {
-      const body: any = await discoverTryIdpResp.json();
-      if (
-        body?.controls?.credentials &&
-        body?.controls?.credentials.startsWith("http")
-      ) {
-        cli.v3(
-          `discoverMachineLoginTypeAndUri returns [CSS_V6, '${body?.controls?.credentials}']`
-        );
-        return [MachineLoginMethod.CSS_V6, body?.controls?.credentials];
-      } else {
-        cli.v1(
-          `discoverMachineLoginTypeAndUri got unexpected reply on ${discoverTryIdpUri}, '${body?.controls?.credentials}']. ` +
-            `Will assume not this version/uri.`
-        );
+      let last = machineLoginUri;
+      candidateUrls.push(joinUri(last, `${idpUriPart}/`));
+      let next = dropDir(last);
+      while (last != next && maxDepth-- > 0 && next != serverBaseUrl) {
+        candidateUrls.push(joinUri(next, `${idpUriPart}/`));
+        next = dropDir(next);
       }
     }
+    for (const discoverTryIdpUri of candidateUrls) {
+      cli.v3(
+        `discoverMachineLoginTypeAndUri CSS_V6 test will test '${discoverTryIdpUri}'`
+      );
+      const discoverTryIdpResp = await fetch(discoverTryIdpUri, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
 
-    //Note: For CSS v6, we get this
-    //curl 'https://example.com/idp/' -X GET -H 'Accept: application/json'
-    // {
-    //   "apiVersion" : "0.4",
-    //     "controls" : {
-    //       "credentials" : "https://example.com/idp/credentials/",
-    //       "forgotPassword" : "https://example.com/idp/forgotpassword/",
-    //       "index" : "https://example.com/idp/",
-    //       "login" : "https://example.com/idp/login/",
-    //       "prompt" : "https://example.com/idp/prompt/",
-    //       "register" : "https://example.com/idp/register/"
-    //    }
-    // }
+      cli.v3(`discoverTryIdpResp.status`, discoverTryIdpResp.status);
+
+      if (discoverTryIdpResp.ok) {
+        const body: any = await discoverTryIdpResp.json();
+        if (
+          body?.controls?.credentials &&
+          body?.controls?.credentials.startsWith("http")
+        ) {
+          cli.v3(
+            `discoverMachineLoginTypeAndUri returns [CSS_V6, '${body?.controls?.credentials}']`
+          );
+          return [MachineLoginMethod.CSS_V6, body?.controls?.credentials];
+        } else {
+          cli.v1(
+            `discoverMachineLoginTypeAndUri got unexpected reply on ${discoverTryIdpUri}, '${body?.controls?.credentials}']. ` +
+              `Will assume not this version/uri.`
+          );
+        }
+      }
+
+      //Note: For CSS v6, we get this
+      //curl 'https://example.com/idp/' -X GET -H 'Accept: application/json'
+      // {
+      //   "apiVersion" : "0.4",
+      //     "controls" : {
+      //       "credentials" : "https://example.com/idp/credentials/",
+      //       "forgotPassword" : "https://example.com/idp/forgotpassword/",
+      //       "index" : "https://example.com/idp/",
+      //       "login" : "https://example.com/idp/login/",
+      //       "prompt" : "https://example.com/idp/prompt/",
+      //       "register" : "https://example.com/idp/register/"
+      //    }
+      // }
+    }
   }
 
   cli.v1(

@@ -21,7 +21,7 @@ import {
 } from "../common/interfaces.js";
 import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
-import { join_uri } from "../utils/uri_helper.js";
+import { joinUri } from "../utils/uri_helper.js";
 
 /**
  *
@@ -162,7 +162,7 @@ export async function uploadPodFile(
       );
     }
 
-    const targetUri = join_uri(pod.podUri, podFileRelative);
+    const targetUri = joinUri(pod.podUri, podFileRelative);
     const res = await authFetch(targetUri, {
       method: "PUT",
       headers: { "content-type": contentType },

@@ -101,7 +101,7 @@ export async function populatePodsFromDir(
 
     //We don't need to create containers, they should be auto created according to the spec
     // for (const dirToCreate of podListing.dirs) {
-    //   const podFilePath = join_uri(xxxxxx, xxxxxxx); `${accountDirPath}/${dirToCreate.pathFromBase}`;
+    //   const podFilePath = joinUri(xxxxxx, xxxxxxx); `${accountDirPath}/${dirToCreate.pathFromBase}`;
     //   ... create dir in pod
     // }
 
