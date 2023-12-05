@@ -166,6 +166,11 @@ export async function getExistingAccountsAndPods(
             ` which is not one of ${MachineLoginMethodStrings.join(",")}.`
         );
       }
+      if (ui.machineLoginUri && !ui.machineLoginUri.startsWith("http")) {
+        throw new Error(
+          `File "${cli.accountSourceFile}" contains an entry with a machineLoginUri that is not an URL.`
+        );
+      }
       res.push({
         index,
         username: ui.username,
@@ -174,7 +179,7 @@ export async function getExistingAccountsAndPods(
         webID: ui.webID,
         oidcIssuer: ui.oidcIssuer,
         machineLoginMethod: ui.machineLoginMethod,
-        machineLoginUri: undefined,
+        machineLoginUri: ui.machineLoginUri,
         podUri: ui.podUri,
       });
       index++;
