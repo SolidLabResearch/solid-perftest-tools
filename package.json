@@ -6,15 +6,17 @@
   "bin": {
     "solid-populate": "./bin/populate/populate-main.js",
     "solid-flood": "./bin/flood/flood.js",
-    "solid-flood-worker": "./bin/flood/flood-worker.js"
+    "solid-flood-worker": "./bin/flood/flood-worker.js",
+    "solid-account-file-merger": "./bin/utils/account-file-merger.js",
+    "solid-auth-cache-merger": "./bin/utils/auth-cache-merger.js"
   },
   "exports": "./bin/populate/solid-populate-lib.js",
   "types": "./bin/populate/solid-populate-lib.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
-    "build": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js",
-    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js"
+    "build": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js",
+    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js"
   },
   "repository": {
     "type": "git",

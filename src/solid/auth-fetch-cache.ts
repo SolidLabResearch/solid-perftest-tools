@@ -46,7 +46,7 @@ interface CacheAuthAccessToken {
   };
 }
 
-interface DumpType {
+export interface DumpType {
   timestamp: string;
   cssTokensByUser: Array<UserToken | null>;
   authAccessTokenByUser: Array<CacheAuthAccessToken | null>;
