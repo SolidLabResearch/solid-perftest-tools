@@ -156,6 +156,13 @@ let ya = getArgvCommon()
       "Fetch scenario: what sort of fetch action is this? BASIC is a simple file upload/download/delete.",
     default: "BASIC",
   })
+  .option("randomizePodCallOrder", {
+    group: "Fetch Action:",
+    type: "boolean",
+    default: true,
+    description: "Use all pods in random order instead of sequential?",
+    demandOption: false,
+  })
   //authentication
   .option("authenticate", {
     group: "Fetch Authentication:",
@@ -349,6 +356,7 @@ export interface CliArgsFlood extends CliArgsCommon {
   notificationChannelType: "websocket" | "webhook";
   notificationWebhookTarget: string;
   notificationIgnore: boolean;
+  randomizePodCallOrder: boolean;
 }
 
 export function getCliArgs(): CliArgsFlood {
@@ -389,5 +397,6 @@ export function getCliArgs(): CliArgsFlood {
     ),
     notificationWebhookTarget: argv.notificationWebhookTarget,
     notificationIgnore: argv.notificationIgnore,
+    randomizePodCallOrder: argv.randomizePodCallOrder,
   };
 }

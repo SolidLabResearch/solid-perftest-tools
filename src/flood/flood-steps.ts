@@ -961,9 +961,14 @@ export async function stepFlood(
     );
 
     const requestMaker = () => {
-      const podId = curPodId++;
-      if (curPodId >= podCount) {
-        curPodId = 0;
+      let podId;
+      if (cli.randomizePodCallOrder) {
+        podId = Math.floor(Math.random() * podCount);
+      } else {
+        podId = curPodId++;
+        if (curPodId >= podCount) {
+          curPodId = 0;
+        }
       }
       const fetchIndex = fetchIndexForPod[podId]++;
       return fetchPodFile(
@@ -1018,11 +1023,19 @@ export async function stepFlood(
       i < cli.filenameIndexingStart + cli.fetchCount;
       i++
     ) {
+      let podIndices = [...Array(podCount)].map((item, index) => index);
+      if (cli.randomizePodCallOrder) {
+        podIndices = podIndices
+          .map((value) => [Math.random(), value])
+          .sort(([a, aa], [b, bb]) => a - b)
+          .map(([a, aa]) => aa);
+      }
       for (let j = 0; j < podCount; j++) {
+        let podId = podIndices[j];
         requests.push(() =>
           fetchPodFile(
             cli.scenario,
-            floodState.pods[j],
+            floodState.pods[podId],
             cli.podFilename,
             counter,
             floodState.authFetchCache,
@@ -1031,7 +1044,7 @@ export async function stepFlood(
             cli.filenameIndexing,
             i,
             cli.mustUpload,
-            uploadData ? uploadData(j, i) : undefined
+            uploadData ? uploadData(podId, i) : undefined
           )
         );
       }
