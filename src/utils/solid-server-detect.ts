@@ -256,8 +256,6 @@ export async function discoverMachineLoginTypeAndUri(
     }
   }
 
-  cli.v1(
-    `discoverMachineLoginTypeAndUri did not find any CreateAccountMethod.`
-  );
+  cli.v1(`discoverMachineLoginTypeAndUri did not find any MachineLoginMethod.`);
   return [MachineLoginMethod.NONE, "error"];
 }
