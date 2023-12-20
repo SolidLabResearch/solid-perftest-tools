@@ -18,6 +18,7 @@ import { CliArgsCommon } from "../common/cli-args.js";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
 import fetch from "node-fetch";
 import { getWebIDs } from "./css-v7-accounts-api.js";
+import { fetchWithLog } from "../utils/verbosity.js";
 
 function accountEmail(account: string): string {
   return `${account}@example.org`;
@@ -87,16 +88,21 @@ export async function createUserTokenv6(
     );
   }
   try {
-    res = await fetcher(pod.machineLoginUri, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        name: `token-css-populate-${pod.username}`,
-        email: pod.email,
-        password: pod.password,
-      }),
-      signal: controller.signal,
-    });
+    res = await fetchWithLog(
+      "Creating machine login token",
+      cli,
+      pod.machineLoginUri,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: `token-css-populate-${pod.username}`,
+          email: pod.email,
+          password: pod.password,
+        }),
+        signal: controller.signal,
+      }
+    );
 
     body = await res.text();
   } catch (error: any) {
@@ -212,7 +218,7 @@ export async function getUsableAccessToken(
       }
 
       accessTokenDurationStart = new Date().getTime();
-      const res = await fetcher(url, {
+      const res = await fetchWithLog("Creating access token", cli, url, {
         method: "POST",
         headers: {
           authorization: `Basic ${Buffer.from(authString).toString("base64")}`,

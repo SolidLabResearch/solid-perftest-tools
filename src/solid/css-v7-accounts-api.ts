@@ -8,6 +8,7 @@ import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
 import { CliArgsCommon } from "../common/cli-args.js";
+import { fetchWithLog } from "../utils/verbosity.js";
 
 //see
 // https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/account/json-api.md
@@ -186,23 +187,28 @@ export async function createClientCredential(
   let res = null;
   let body = null;
   try {
-    res = await fetch(clientCredentialsEndpoint, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        Accept: "application/json",
-        Cookie: cookieHeader,
-      },
-      body: JSON.stringify({
-        webId: webId,
-      }),
-      signal: controller.signal,
-    });
+    res = await fetchWithLog(
+      "Creating Client Credential",
+      cli,
+      clientCredentialsEndpoint,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Accept: "application/json",
+          Cookie: cookieHeader,
+        },
+        body: JSON.stringify({
+          webId: webId,
+        }),
+        signal: controller.signal,
+      }
+    );
 
     body = await res.text();
   } catch (error: any) {
     if (error.name === "AbortError") {
-      console.error(`Fetching user token took too long: aborted`);
+      console.error(`Creating Client Credential took too long: aborted`);
     }
     throw error;
   } finally {
@@ -210,7 +216,7 @@ export async function createClientCredential(
   }
   if (!res || !res.ok) {
     console.error(
-      `${res.status} - Creating token for ${username} failed:`,
+      `${res.status} - Creating Client Credential for ${username} failed:`,
       body
     );
     throw new ResponseError(res, body);
@@ -229,11 +235,16 @@ export async function createEmptyAccount(
 
   cli.v2(`Creating Account...`);
   cli.v2(`POSTing to: ${accountCreateEndpoint}`);
-  let resp = await fetch(accountCreateEndpoint, {
-    method: "POST",
-    headers: { Accept: "application/json" },
-    body: null,
-  });
+  let resp = await fetchWithLog(
+    "Creating Account",
+    cli,
+    accountCreateEndpoint,
+    {
+      method: "POST",
+      headers: { Accept: "application/json" },
+      body: null,
+    }
+  );
 
   if (resp.status == 404) {
     cli.v1(`404 registering user: incompatible IdP path`);
@@ -317,15 +328,20 @@ export async function createPassword(
   };
 
   cli.v2(`POSTing to: ${passCreateEndpoint}`);
-  const passCreateResp = await fetch(passCreateEndpoint, {
-    method: "POST",
-    headers: {
-      Cookie: cookieHeader,
-      "content-type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(createPassObj),
-  });
+  const passCreateResp = await fetchWithLog(
+    "Creating password",
+    cli,
+    passCreateEndpoint,
+    {
+      method: "POST",
+      headers: {
+        Cookie: cookieHeader,
+        "content-type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(createPassObj),
+    }
+  );
   cli.v3(
     `passCreateResp.ok`,
     passCreateResp.ok,
@@ -380,15 +396,20 @@ export async function createAccountPod(
   };
 
   cli.v2(`POSTing to: ${podCreateEndpoint}`);
-  const podCreateResp = await fetch(podCreateEndpoint, {
-    method: "POST",
-    headers: {
-      Cookie: cookieHeader,
-      "content-type": "application/json",
-      Accept: "application/json",
-    },
-    body: JSON.stringify(podCreateObj),
-  });
+  const podCreateResp = await fetchWithLog(
+    "Creating Pod + WebID",
+    cli,
+    podCreateEndpoint,
+    {
+      method: "POST",
+      headers: {
+        Cookie: cookieHeader,
+        "content-type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(podCreateObj),
+    }
+  );
   cli.v3(
     `podCreateResp.ok`,
     podCreateResp.ok,
@@ -430,10 +451,15 @@ export async function getWebIDs(
   }
 
   cli.v2(`Fetching WebID info at ${webIdUri}`);
-  const webIdInfoResp = await fetch(webIdUri, {
-    method: "GET",
-    headers: { Accept: "application/json", Cookie: cookieHeader },
-  });
+  const webIdInfoResp = await fetchWithLog(
+    "Fetching WebID info",
+    cli,
+    webIdUri,
+    {
+      method: "GET",
+      headers: { Accept: "application/json", Cookie: cookieHeader },
+    }
+  );
   cli.v3(
     `webIdInfoResp.ok`,
     webIdInfoResp.ok,
@@ -441,7 +467,7 @@ export async function getWebIDs(
     webIdInfoResp.status
   );
   if (!webIdInfoResp.ok) {
-    console.error(`${webIdInfoResp.status} - Fetching webID info failed:`);
+    console.error(`${webIdInfoResp.status} - Fetching WebID info failed:`);
     const body = await webIdInfoResp.text();
     console.error(body);
     throw new ResponseError(webIdInfoResp, body);
@@ -491,8 +517,8 @@ export async function getPods(
     );
   }
 
-  cli.v2(`Fetching pod info at ${podUri}`);
-  const podInfoResp = await fetch(podUri, {
+  cli.v2(`Fetching Pod info at ${podUri}`);
+  const podInfoResp = await fetchWithLog("Fetching Pod info", cli, podUri, {
     method: "GET",
     headers: { Accept: "application/json", Cookie: cookieHeader },
   });
