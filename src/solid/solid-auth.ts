@@ -348,6 +348,7 @@ export async function getFetchAuthHeaders(
   cli: CliArgsCommon,
   pod: PodAndOwnerInfo,
   method: "get" | "put" | "post" | "patch" | "delete",
+  htu: string,
   token: UserToken,
   fetcher: AnyFetchType = fetch,
   accessTokenDurationCounter: DurationCounter | null = null,
@@ -368,7 +369,13 @@ export async function getFetchAuthHeaders(
     ensureAuthExpirationS
   );
   return [
-    await getFetchAuthHeadersFromAccessToken(cli, pod, method, accessToken),
+    await getFetchAuthHeadersFromAccessToken(
+      cli,
+      pod,
+      method,
+      htu,
+      accessToken
+    ),
     accessToken,
   ];
 }
@@ -377,10 +384,11 @@ export async function getFetchAuthHeadersFromAccessToken(
   cli: CliArgsCommon,
   pod: PodAndOwnerInfo,
   method: "get" | "put" | "post" | "patch" | "delete",
+  htu: string,
   accessToken: AccessToken
 ): Promise<AuthHeaders> {
   const dpop = await createDpopHeader(
-    pod.oidcIssuer,
+    htu, //pod.oidcIssuer,
     method,
     accessToken.dpopKeyPair
   );

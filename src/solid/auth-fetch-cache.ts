@@ -562,6 +562,7 @@ export class AuthFetchCache {
         this.cli,
         pod,
         "get",
+        pod.podUri,
         this.cssTokensByUser[userIndex]!,
         nodeFetch,
         null,

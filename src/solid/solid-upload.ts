@@ -23,11 +23,7 @@ import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
 import { fetchWithLog } from "../utils/verbosity.js";
-import {
-  getFetchAuthHeaders,
-  getFetchAuthHeadersFromAccessToken,
-  PodAuth,
-} from "./solid-auth.js";
+import { getFetchAuthHeadersFromAccessToken, PodAuth } from "./solid-auth.js";
 
 /**
  *
@@ -186,6 +182,7 @@ export async function uploadPodFile(
               cli,
               pod,
               "put",
+              targetUri,
               podAuth.accessToken
             )
           : {};
