@@ -164,11 +164,18 @@ export async function uploadPodFile(
     }
 
     const targetUri = joinUri(pod.podUri, podFileRelative);
-    const res = await fetchWithLog(authFetch, "", cli, targetUri, {
-      method: "PUT",
-      headers: { "content-type": contentType },
-      body: fileContent,
-    });
+    const res = await fetchWithLog(
+      authFetch,
+      `Upload ${podFileRelative} (auth headers hidden)`,
+      cli,
+      targetUri,
+      {
+        method: "PUT",
+        headers: { "content-type": contentType },
+        body: fileContent,
+      },
+      debugLogging
+    );
 
     // console.log(`res.ok`, res.ok);
     // console.log(`res.status`, res.status);
