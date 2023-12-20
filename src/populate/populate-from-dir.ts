@@ -78,7 +78,7 @@ export async function populatePodsFromDir(
   );
 
   for (const pod of usersInfos) {
-    const authFetch = await authFetchCache.getAuthFetcher(pod);
+    const podAuth = await authFetchCache.getPodAuth(pod);
 
     const podListing = await makeDirListing(pod.dir, true);
 
@@ -123,7 +123,7 @@ export async function populatePodsFromDir(
         pod,
         fileContent,
         filePathInPod,
-        authFetch,
+        podAuth,
         CONTENT_TYPE_BYTE, //TODO use correct content type
         false
       );
@@ -139,7 +139,7 @@ export async function populatePodsFromDir(
         await addAuthZFile(
           cli,
           pod,
-          authFetch,
+          podAuth,
           fileDirInPod,
           fileName,
           true,

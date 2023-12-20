@@ -23,6 +23,11 @@ import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
 import { fetchWithLog } from "../utils/verbosity.js";
+import {
+  getFetchAuthHeaders,
+  getFetchAuthHeadersFromAccessToken,
+  PodAuth,
+} from "./solid-auth.js";
 
 /**
  *
@@ -149,7 +154,7 @@ export async function uploadPodFile(
   pod: PodAndOwnerInfo,
   fileContent: string | Buffer,
   podFileRelative: string,
-  authFetch: AnyFetchType,
+  podAuth: PodAuth,
   contentType: string,
   debugLogging: boolean = false
 ) {
@@ -165,8 +170,8 @@ export async function uploadPodFile(
 
     const targetUri = joinUri(pod.podUri, podFileRelative);
     const res = await fetchWithLog(
-      authFetch,
-      `Upload ${podFileRelative} (auth headers hidden)`,
+      podAuth.fetch,
+      `Upload ${podFileRelative} (auth headers reconstructed)`,
       cli,
       targetUri,
       {
@@ -174,7 +179,17 @@ export async function uploadPodFile(
         headers: { "content-type": contentType },
         body: fileContent,
       },
-      debugLogging
+      debugLogging,
+      async () => {
+        return podAuth.accessToken
+          ? await getFetchAuthHeadersFromAccessToken(
+              cli,
+              pod,
+              "put",
+              podAuth.accessToken
+            )
+          : {};
+      }
     );
 
     // console.log(`res.ok`, res.ok);
@@ -205,60 +220,10 @@ function lastDotToSemi(input: string): string {
   return input.replace(/.(\s*)$/, ";$1");
 }
 
-//OLD DIRTY FUNCTION (remove)
-// export async function makeAclReadPublic(
-//   cssBaseUrl: string,
-//   account: string,
-//   podFilePattern: string,
-//   authFetch: AnyFetchType
-// ) {
-//   const aclContent = await downloadPodFile(
-//     cssBaseUrl,
-//     account,
-//     ".acl",
-//     authFetch
-//   );
-//
-//   //Quick and dirty acl edit
-//   let newAclContent = "";
-//   let seenPublic = false;
-//   let needsUpdate = true;
-//   for (const line of aclContent.split(/\n/)) {
-//     if (line.trim() === "<#public>") {
-//       seenPublic = true;
-//     }
-//     if (seenPublic && line.includes(`acl:accessTo <./${podFilePattern}>`)) {
-//       needsUpdate = false;
-//       break;
-//     }
-//     if (seenPublic && line.includes(`acl:default <./>`)) {
-//       needsUpdate = false;
-//       break;
-//     }
-//     if (seenPublic && line.trim() === "") {
-//       newAclContent = lastDotToSemi(newAclContent);
-//       //doesn't work. So I don't see to understand this.
-//       // newAclContent += `    acl:accessTo <./${podFilePattern}>;\n`;
-//       // newAclContent += '    acl:mode acl:Read.\n';
-//       //this works, but gives access to everything. Which is fine I guess.
-//       newAclContent += `    acl:default <./>.\n`;
-//       seenPublic = false;
-//     }
-//     newAclContent += line + "\n";
-//   }
-//
-//   if (needsUpdate) {
-//     // console.log("Replacing .acl with:\n" + newAclContent + "\n");
-//     await uploadPodFile(cssBaseUrl, account, newAclContent, ".acl", authFetch);
-//   } else {
-//     // console.log(".acl already OK.\n");
-//   }
-// }
-
 export async function addAuthZFiles(
   cli: CliArgsPopulate,
   pod: PodAndOwnerInfo,
-  authFetch: AnyFetchType,
+  podAuth: PodAuth,
   targetFilename: string,
   publicRead: boolean = true,
   publicWrite: boolean = false,
@@ -289,7 +254,7 @@ export async function addAuthZFiles(
         await addAuthZFile(
           cli,
           pod,
-          authFetch,
+          podAuth,
           targetDirName,
           "",
           publicRead,
@@ -310,7 +275,7 @@ export async function addAuthZFiles(
       await addAuthZFile(
         cli,
         pod,
-        authFetch,
+        podAuth,
         subDirs,
         targetFilename,
         publicRead,
@@ -327,7 +292,7 @@ export async function addAuthZFiles(
 export async function addAuthZFile(
   cli: CliArgsPopulate,
   pod: PodAndOwnerInfo,
-  authFetch: AnyFetchType,
+  podAuth: PodAuth,
   targetDirname: string, //dir of the file that needs AuthZ
   targetBaseFilename: string, //base name (without dir) of the file that needs AuthZ. For dirs, this is empty
   publicRead: boolean = true,
@@ -350,7 +315,7 @@ export async function addAuthZFile(
   if (authZType == "WAC") {
     newAuthZContent = makeAclContent(
       pod,
-      authFetch,
+      podAuth,
       targetBaseFilename,
       publicRead,
       publicWrite,
@@ -362,7 +327,7 @@ export async function addAuthZFile(
   } else {
     newAuthZContent = makeAcrContent(
       pod,
-      authFetch,
+      podAuth,
       targetBaseFilename,
       publicRead,
       publicWrite,
@@ -378,7 +343,7 @@ export async function addAuthZFile(
     pod,
     newAuthZContent,
     fullPathPodFilename,
-    authFetch,
+    podAuth,
     contentType,
     debugLogging
   );

@@ -33,6 +33,12 @@ export interface AccessToken {
   dpopKeyPair: KeyPair;
   expire: Date;
 }
+
+export interface PodAuth {
+  fetch: AnyFetchType;
+  accessToken?: AccessToken;
+  userToken?: UserToken;
+}
 export async function createUserToken(
   cli: CliArgsCommon,
   pod: PodAndOwnerInfo,
@@ -333,7 +339,7 @@ export async function getUserAuthFetch(
   }
 }
 
-export interface AuthHeaders {
+export interface AuthHeaders extends Record<string, string> {
   Authorization: string;
   DPoP: string;
 }
@@ -361,16 +367,25 @@ export async function getFetchAuthHeaders(
     accessToken,
     ensureAuthExpirationS
   );
+  return [
+    await getFetchAuthHeadersFromAccessToken(cli, pod, method, accessToken),
+    accessToken,
+  ];
+}
+
+export async function getFetchAuthHeadersFromAccessToken(
+  cli: CliArgsCommon,
+  pod: PodAndOwnerInfo,
+  method: "get" | "put" | "post" | "patch" | "delete",
+  accessToken: AccessToken
+): Promise<AuthHeaders> {
   const dpop = await createDpopHeader(
     pod.oidcIssuer,
     method,
     accessToken.dpopKeyPair
   );
-  return [
-    {
-      Authorization: `DPoP ${accessToken.token}`,
-      DPoP: dpop,
-    },
-    accessToken,
-  ];
+  return {
+    Authorization: `DPoP ${accessToken.token}`,
+    DPoP: dpop,
+  };
 }

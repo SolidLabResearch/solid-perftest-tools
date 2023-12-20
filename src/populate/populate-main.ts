@@ -41,13 +41,13 @@ async function main() {
 
   for (const createdUserInfo of createdUserInfos) {
     //create dummy.txt
-    const authFetch = await authFetchCache.getAuthFetcher(createdUserInfo);
+    const podAuth = await authFetchCache.getPodAuth(createdUserInfo);
     await uploadPodFile(
       cli,
       createdUserInfo,
       "DUMMY DATA FOR " + createdUserInfo.username,
       "dummy.txt",
-      authFetch,
+      podAuth,
       CONTENT_TYPE_BYTE,
       // CONTENT_TYPE_TXT,
       createdUserInfo.index < 2

@@ -1,9 +1,10 @@
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import { PodAndOwnerInfo } from "../common/interfaces.js";
+import { PodAuth } from "../solid/solid-auth.js";
 
 export function makeAclContent(
   pod: PodAndOwnerInfo,
-  authFetch: AnyFetchType,
+  podAuth: PodAuth,
   targetFilename: string,
   publicRead: boolean = true,
   publicWrite: boolean = false,

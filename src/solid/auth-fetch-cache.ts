@@ -3,6 +3,7 @@ import {
   createUserToken,
   getFetchAuthHeaders,
   getUserAuthFetch,
+  PodAuth,
   stillUsableAccessToken,
   UserToken,
 } from "./solid-auth.js";
@@ -150,11 +151,15 @@ export class AuthFetchCache {
     }
   }
 
-  async getAuthFetcher(pod: PodAndOwnerInfo): Promise<AnyFetchType> {
+  async getPodAuth(pod: PodAndOwnerInfo): Promise<PodAuth> {
     console.assert(pod.index < this.accountInfos.length);
     this.useCount++;
     if (!this.authenticate) {
-      return this.fetcher;
+      return {
+        fetch: this.fetcher,
+        accessToken: undefined,
+        userToken: undefined,
+      };
     }
     this.expireAccessToken(pod.index);
     let userToken = null;
@@ -183,7 +188,7 @@ export class AuthFetchCache {
       );
       this.tokenFetchCount++;
     }
-    if (!theFetch) {
+    if (!theFetch || !accessToken) {
       [theFetch, accessToken] = await getUserAuthFetch(
         this.cli,
         pod,
@@ -213,7 +218,30 @@ export class AuthFetchCache {
       this.authFetchersByUser[pod.index] = theFetch;
     }
 
-    return theFetch;
+    return {
+      fetch: theFetch,
+      accessToken,
+      userToken,
+    };
+  }
+
+  async getAuthFetcher(pod: PodAndOwnerInfo): Promise<AnyFetchType> {
+    if (!this.authenticate) {
+      return this.fetcher;
+    }
+    const res = await this.getPodAuth(pod);
+    return res.fetch;
+  }
+
+  async getAccessToken(pod: PodAndOwnerInfo): Promise<AccessToken> {
+    if (!this.authenticate) {
+      throw new Error(`Cannot get AccessToken when authentication disabled`);
+    }
+    const res = await this.getPodAuth(pod);
+    if (res.accessToken == null) {
+      throw new Error(`Could not get fetcher and/or AccessToken`);
+    }
+    return res.accessToken;
   }
 
   //FROM FLOOD

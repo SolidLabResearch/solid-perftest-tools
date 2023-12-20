@@ -55,14 +55,7 @@ export async function generateVariableSizeFiles(
   }
 
   for (const pod of pods) {
-    const authFetch = await authFetchCache.getAuthFetcher(pod);
-    // await uploadPodFile(
-    //   cli,
-    //   account,
-    //   "DUMMY DATA FOR " + account,
-    //   "dummy.txt",
-    //   authFetch
-    // );
+    const podAuth = await authFetchCache.getPodAuth(pod);
 
     for (const [fileName, fileContent] of files) {
       await uploadPodFile(
@@ -70,7 +63,7 @@ export async function generateVariableSizeFiles(
         pod,
         fileContent,
         `${subDirs}${fileName}`,
-        authFetch,
+        podAuth,
         CONTENT_TYPE_BYTE,
         pod.index < 2
       );
@@ -78,7 +71,7 @@ export async function generateVariableSizeFiles(
       await addAuthZFiles(
         cli,
         pod,
-        authFetch,
+        podAuth,
         fileName,
         true,
         false,
@@ -115,7 +108,7 @@ export async function generateFixedSizeFiles(
 
   for (const pod of pods) {
     const startTime = new Date().getTime();
-    const authFetch = await authFetchCache.getAuthFetcher(pod);
+    const podAuth = await authFetchCache.getPodAuth(pod);
 
     for (let j = 0; j < fileCount; j++) {
       const fileName = `fixed_${j}`;
@@ -124,7 +117,7 @@ export async function generateFixedSizeFiles(
         pod,
         fileContent,
         `${subDirs}${fileName}`,
-        authFetch,
+        podAuth,
         CONTENT_TYPE_BYTE,
         pod.index < 2
       );
@@ -132,7 +125,7 @@ export async function generateFixedSizeFiles(
       await addAuthZFiles(
         cli,
         pod,
-        authFetch,
+        podAuth,
         fileName,
         true,
         true,
@@ -196,7 +189,7 @@ export async function generateRdfFiles(
   }
 
   for (const pod of pods) {
-    const authFetch = await authFetchCache.getAuthFetcher(pod);
+    const podAuth = await authFetchCache.getPodAuth(pod);
 
     for (const fileInfo of fileInfos) {
       await uploadPodFile(
@@ -204,7 +197,7 @@ export async function generateRdfFiles(
         pod,
         fileInfo.buffer,
         `${subDirs}${fileInfo.fileName}`,
-        authFetch,
+        podAuth,
         fileInfo.contentType,
         pod.index < 2
       );
@@ -212,7 +205,7 @@ export async function generateRdfFiles(
       await addAuthZFiles(
         cli,
         pod,
-        authFetch,
+        podAuth,
         fileInfo.fileName,
         true,
         false,
