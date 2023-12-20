@@ -188,6 +188,7 @@ export async function createClientCredential(
   let body = null;
   try {
     res = await fetchWithLog(
+      fetch,
       "Creating Client Credential",
       cli,
       clientCredentialsEndpoint,
@@ -236,6 +237,7 @@ export async function createEmptyAccount(
   cli.v2(`Creating Account...`);
   cli.v2(`POSTing to: ${accountCreateEndpoint}`);
   let resp = await fetchWithLog(
+    fetch,
     "Creating Account",
     cli,
     accountCreateEndpoint,
@@ -329,6 +331,7 @@ export async function createPassword(
 
   cli.v2(`POSTing to: ${passCreateEndpoint}`);
   const passCreateResp = await fetchWithLog(
+    fetch,
     "Creating password",
     cli,
     passCreateEndpoint,
@@ -397,6 +400,7 @@ export async function createAccountPod(
 
   cli.v2(`POSTing to: ${podCreateEndpoint}`);
   const podCreateResp = await fetchWithLog(
+    fetch,
     "Creating Pod + WebID",
     cli,
     podCreateEndpoint,
@@ -452,6 +456,7 @@ export async function getWebIDs(
 
   cli.v2(`Fetching WebID info at ${webIdUri}`);
   const webIdInfoResp = await fetchWithLog(
+    fetch,
     "Fetching WebID info",
     cli,
     webIdUri,
@@ -518,10 +523,16 @@ export async function getPods(
   }
 
   cli.v2(`Fetching Pod info at ${podUri}`);
-  const podInfoResp = await fetchWithLog("Fetching Pod info", cli, podUri, {
-    method: "GET",
-    headers: { Accept: "application/json", Cookie: cookieHeader },
-  });
+  const podInfoResp = await fetchWithLog(
+    fetch,
+    "Fetching Pod info",
+    cli,
+    podUri,
+    {
+      method: "GET",
+      headers: { Accept: "application/json", Cookie: cookieHeader },
+    }
+  );
   cli.v3(
     `podInfoResp.ok`,
     podInfoResp.ok,

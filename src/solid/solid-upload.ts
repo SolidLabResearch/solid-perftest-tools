@@ -22,6 +22,7 @@ import {
 import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
+import { fetchWithLog } from "../utils/verbosity";
 
 /**
  *
@@ -163,7 +164,7 @@ export async function uploadPodFile(
     }
 
     const targetUri = joinUri(pod.podUri, podFileRelative);
-    const res = await authFetch(targetUri, {
+    const res = await fetchWithLog(authFetch, "", cli, targetUri, {
       method: "PUT",
       headers: { "content-type": contentType },
       body: fileContent,

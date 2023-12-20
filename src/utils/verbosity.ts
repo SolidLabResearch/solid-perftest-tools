@@ -1,13 +1,13 @@
-import { RequestInfo, RequestInit, Response } from "node-fetch";
-import fetch from "node-fetch";
 import { CliArgsCommon } from "../common/cli-args";
+import { AnyFetchType } from "./generic-fetch";
 
-export async function fetchWithLog(
+export async function fetchWithLog<FetchType extends AnyFetchType>(
+  fetchFunction: FetchType,
   actionDescription: string,
   cli: CliArgsCommon,
-  url: RequestInfo,
-  init?: RequestInit
-): Promise<Response> {
+  url: Parameters<FetchType>[0],
+  init?: Parameters<FetchType>[1]
+): Promise<Awaited<ReturnType<FetchType>>> {
   if (cli.verbosity_count >= 3) {
     cli.v3(
       `FETCH request: \npurpose='${actionDescription}' \nmethod=${
@@ -19,7 +19,8 @@ export async function fetchWithLog(
       )} \nbody='${init?.body || ""}'`
     );
   }
-  const res = await fetch(url, init);
+  // @ts-ignore
+  const res = await fetchFunction(url, init);
   if (cli.verbosity_count >= 3) {
     // const bodyLen = res?.headers?.get("content-type");
     const contentType = res?.headers?.get("content-type");
@@ -27,5 +28,6 @@ export async function fetchWithLog(
       `FETCH reply: status=${res.status} (${res.statusText}) content-type=${contentType}`
     );
   }
+  // @ts-ignore
   return res;
 }

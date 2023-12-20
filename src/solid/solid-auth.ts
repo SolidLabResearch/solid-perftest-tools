@@ -89,6 +89,7 @@ export async function createUserTokenv6(
   }
   try {
     res = await fetchWithLog(
+      fetch,
       "Creating machine login token",
       cli,
       pod.machineLoginUri,
@@ -218,7 +219,7 @@ export async function getUsableAccessToken(
       }
 
       accessTokenDurationStart = new Date().getTime();
-      const res = await fetchWithLog("Creating access token", cli, url, {
+      const res = await fetchWithLog(fetch, "Creating access token", cli, url, {
         method: "POST",
         headers: {
           authorization: `Basic ${Buffer.from(authString).toString("base64")}`,
