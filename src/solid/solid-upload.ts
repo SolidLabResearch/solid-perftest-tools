@@ -22,7 +22,7 @@ import {
 import { getServerBaseUrl } from "../utils/solid-server-detect.js";
 import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
-import { fetchWithLog } from "../utils/verbosity";
+import { fetchWithLog } from "../utils/verbosity.js";
 
 /**
  *
