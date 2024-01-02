@@ -2,6 +2,7 @@ import {
   AccessToken,
   createUserToken,
   getFetchAuthHeaders,
+  getFetchAuthHeadersFromAccessToken,
   getUserAuthFetch,
   PodAuth,
   stillUsableAccessToken,
@@ -437,9 +438,9 @@ export class AuthFetchCache {
       );
       const testUrl = joinUri(accountInfo.podUri, filename);
       try {
-        const aFetch = await this.getAuthFetcher(accountInfo);
+        const podAuth = await this.getPodAuth(accountInfo);
         const res: AnyFetchResponseType = await fetchWithLog(
-          aFetch,
+          podAuth.fetch,
           "Testing Auth",
           this.cli,
           testUrl,
@@ -449,6 +450,18 @@ export class AuthFetchCache {
             //  see https://github.com/node-fetch/node-fetch/issues/741
             // @ts-ignore
             signal: AbortSignal.timeout(fetchTimeoutMs), // abort after 4 seconds //supported in nodejs>=17.3
+          },
+          true,
+          async () => {
+            return podAuth.accessToken
+              ? await getFetchAuthHeadersFromAccessToken(
+                  this.cli,
+                  accountInfo,
+                  "get",
+                  testUrl,
+                  podAuth.accessToken
+                )
+              : {};
           }
         );
         if (!res.ok) {
