@@ -28,11 +28,18 @@ export async function fetchWithLog<
   }
   const res = await fetchFunction(url, init);
   if (cli.verbosity_count >= 3) {
-    const bodyLen = res?.headers?.get("content-length");
-    const contentType = res?.headers?.get("content-type");
     cli.v3(
-      `FETCH reply: status=${res.status} (${res.statusText}) content-type=${contentType} content-length=${bodyLen}`
+      `FETCH reply: status=${res.status} (${
+        res.statusText
+      }) headers=${JSON.stringify(res?.headers, null, 3)}`
     );
   }
+  // if (cli.verbosity_count >= 2) {
+  //   const bodyLen = res?.headers?.get("content-length");
+  //   const contentType = res?.headers?.get("content-type");
+  //   cli.v3(
+  //     `FETCH reply: status=${res.status} (${res.statusText}) content-type=${contentType} content-length=${bodyLen}`
+  //   );
+  // }
   return res;
 }
