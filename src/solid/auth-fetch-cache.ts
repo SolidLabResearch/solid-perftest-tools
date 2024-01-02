@@ -25,6 +25,7 @@ import {
   getServerBaseUrl,
 } from "../utils/solid-server-detect.js";
 import { joinUri } from "../utils/uri_helper.js";
+import { fetchWithLog } from "../utils/verbosity";
 
 export interface AuthFetchCacheStats {
   authenticateCache: "none" | "token" | "all";
@@ -437,13 +438,19 @@ export class AuthFetchCache {
       const testUrl = joinUri(accountInfo.podUri, filename);
       try {
         const aFetch = await this.getAuthFetcher(accountInfo);
-        const res: AnyFetchResponseType = await aFetch(testUrl, {
-          method: "GET",
-          //open bug in nodejs typescript that AbortSignal.timeout doesn't work
-          //  see https://github.com/node-fetch/node-fetch/issues/741
-          // @ts-ignore
-          signal: AbortSignal.timeout(fetchTimeoutMs), // abort after 4 seconds //supported in nodejs>=17.3
-        });
+        const res: AnyFetchResponseType = await fetchWithLog(
+          aFetch,
+          "Testing Auth",
+          this.cli,
+          testUrl,
+          {
+            method: "GET",
+            //open bug in nodejs typescript that AbortSignal.timeout doesn't work
+            //  see https://github.com/node-fetch/node-fetch/issues/741
+            // @ts-ignore
+            signal: AbortSignal.timeout(fetchTimeoutMs), // abort after 4 seconds //supported in nodejs>=17.3
+          }
+        );
         if (!res.ok) {
           allSuccess = false;
           console.error(
