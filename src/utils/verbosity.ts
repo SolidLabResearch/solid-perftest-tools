@@ -28,10 +28,14 @@ export async function fetchWithLog<
   }
   const res = await fetchFunction(url, init);
   if (cli.verbosity_count >= 3) {
+    const h: any = {};
+    for (const [k, v] of res?.headers) {
+      h[k] = v;
+    }
     cli.v3(
       `FETCH reply: status=${res.status} (${
         res.statusText
-      }) headers=${JSON.stringify(res?.headers, null, 3)}`
+      }) headers=${JSON.stringify(h, null, 3)}`
     );
   }
   // if (cli.verbosity_count >= 2) {
