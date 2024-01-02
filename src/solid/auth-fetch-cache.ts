@@ -25,7 +25,7 @@ import {
   getServerBaseUrl,
 } from "../utils/solid-server-detect.js";
 import { joinUri } from "../utils/uri_helper.js";
-import { fetchWithLog } from "../utils/verbosity";
+import { fetchWithLog } from "../utils/verbosity.js";
 
 export interface AuthFetchCacheStats {
   authenticateCache: "none" | "token" | "all";
