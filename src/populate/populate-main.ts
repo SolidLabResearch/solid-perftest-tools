@@ -16,7 +16,7 @@ import {
   getExistingAccountsAndPods,
 } from "../common/account.js";
 import { AccountAction } from "../common/interfaces.js";
-import { uploadPodFile } from "../solid/solid-upload.js";
+import { addAuthZFiles, uploadPodFile } from "../solid/solid-upload.js";
 import { CONTENT_TYPE_BYTE, CONTENT_TYPE_TXT } from "../utils/content-type.js";
 import { joinUri } from "../utils/uri_helper.js";
 
@@ -51,6 +51,22 @@ async function main() {
       CONTENT_TYPE_BYTE,
       // CONTENT_TYPE_TXT,
       createdUserInfo.index < 2
+    );
+
+    await addAuthZFiles(
+      cli,
+      createdUserInfo,
+      podAuth,
+      "dummy.txt",
+      true,
+      false,
+      false,
+      createdUserInfo.index < 2,
+      cli.addAclFiles,
+      cli.addAcrFiles,
+      cli.addAcFilePerResource,
+      cli.addAcFilePerDir,
+      cli.dirDepth
     );
   }
 
