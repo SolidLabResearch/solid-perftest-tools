@@ -24,6 +24,10 @@ function generateContent(byteCount: number): ArrayBuffer {
   // return res;
 }
 
+function addThousandSep(num: number): string {
+  return (num + "").replace(/\B(?=(?:\d{3})+\b)/g, "_");
+}
+
 export async function generateVariableSizeFiles(
   authFetchCache: AuthFetchCache,
   cli: CliArgsPopulate,
@@ -39,9 +43,7 @@ export async function generateVariableSizeFiles(
     subDirs += "data/";
   }
 
-  const files: Array<[string, Buffer]> = [];
-  // for (const size in [10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]) {
-  for (const size of [
+  let sizeStrings = [
     "10",
     "100",
     "1_000",
@@ -49,7 +51,16 @@ export async function generateVariableSizeFiles(
     "100_000",
     "1_000_000",
     "10_000_000",
-  ]) {
+  ];
+  if (cli.generateVariableSizeOverrideSizes) {
+    sizeStrings = cli.generateVariableSizeOverrideSizes.map((s) =>
+      addThousandSep(s)
+    );
+  }
+
+  const files: Array<[string, Buffer]> = [];
+  // for (const size in [10, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]) {
+  for (const size of sizeStrings) {
     const size_int = parseInt(size.replaceAll("_", ""));
     files.push([`${size}.rnd`, Buffer.from(generateContent(size_int))]);
   }

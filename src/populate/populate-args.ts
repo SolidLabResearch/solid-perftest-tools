@@ -18,6 +18,7 @@ export interface CliArgsPopulate extends CliArgsCommon {
   addAcFilePerDir: boolean;
   addAcFilePerResource: boolean;
   generateVariableSize: boolean;
+  generateVariableSizeOverrideSizes?: number[];
   generateFixedSize: boolean;
   generateRdf: boolean;
   generateFromDir: boolean;
@@ -44,6 +45,20 @@ export function getCliArgs(): CliArgsPopulate {
       default: false,
       demandOption: false,
     })
+    .option("generate-variable-size-override-sizes", {
+      group: "Generate Variable Size Content:",
+      type: "string",
+      description:
+        "Instead of 7 files, generate any number of files with the provided sizes. Expects a comma separated string of sizes",
+      demandOption: false,
+    })
+    // .option("generate-variable-size-override-datatype", {
+    //   group: "Generate Variable Size Content:",
+    //   type: "string",
+    //   description:
+    //     "Instead of filling the files with random data, fill them with other types of data",
+    //   demandOption: false,
+    // })
     .option("generate-fixed-size", {
       group: "Generate Fixed Size Content:",
       type: "boolean",
@@ -186,6 +201,9 @@ export function getCliArgs(): CliArgsPopulate {
     addAcFilePerDir: argv.addAcFilePerDir,
     addAcFilePerResource: argv.addAcFilePerResource,
     generateVariableSize: argv.generateVariableSize,
+    generateVariableSizeOverrideSizes: argv.generateVariableSizeOverrideSizes
+      ?.split(",")
+      .map((s) => +s),
     generateFixedSize: argv.generateFixedSize,
     generateRdf: argv.generateRdf,
     generateFromDir: argv.generateFromDir,
