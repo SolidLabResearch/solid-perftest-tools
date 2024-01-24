@@ -5,9 +5,8 @@ import {
 import {
   AccountApiInfo,
   getAccountApiInfo,
-} from "../solid/css-v7-accounts-api.js";
+} from "../solid/css-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
-import fetch from "node-fetch";
 import { dropDir, joinUri } from "./uri_helper.js";
 
 /**

@@ -2,8 +2,6 @@
 
 import yargs from "yargs";
 import { hideBin } from "yargs/helpers";
-import nodeFetch from "node-fetch";
-import { Response as NodeJsResponse } from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { fromNow } from "../utils/time-helpers.js";
 import { once } from "events";

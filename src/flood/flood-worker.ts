@@ -2,8 +2,6 @@
 
 import { ControllerMsg, WorkerMsg } from "./flood-messages.js";
 import { CliArgsFlood, getCliArgs } from "./flood-args.js";
-import { AnyFetchType } from "../utils/generic-fetch.js";
-import nodeFetch from "node-fetch";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import {
   Counter,

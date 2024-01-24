@@ -1,6 +1,6 @@
 {
   "name": "@imec-ilabt/solid-perftest-tools",
-  "version": "1.2.1",
+  "version": "1.2.4",
   "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
@@ -10,12 +10,15 @@
     "solid-account-file-merger": "./bin/utils/account-file-merger.js",
     "solid-auth-cache-merger": "./bin/utils/auth-cache-merger.js"
   },
-  "exports": "./bin/populate/populate-lib.js",
+  "exports": {
+    "import": "./bin/populate/populate-lib.js",
+    "require": "./bin/populate/populate-lib.cjs"
+  },
   "types": "./bin/populate/populate-lib.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
-    "build": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js",
+    "build": "tsc && npx rollup bin/populate/populate-lib.js --file bin/populate/populate-lib.cjs --format cjs && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js",
     "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js"
   },
   "repository": {
@@ -45,6 +48,7 @@
     "@types/uuid": "^9.0.3",
     "@types/yargs": "^17.0.13",
     "prettier": "2.6.0",
+    "rollup": "^4.9.6",
     "typescript": "^4.8.4"
   },
   "engines": {

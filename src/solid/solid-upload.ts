@@ -1,18 +1,10 @@
-import fetch from "node-fetch";
 import { ResponseError } from "../utils/error.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import { CONTENT_TYPE_ACL, CONTENT_TYPE_ACR } from "../utils/content-type.js";
 import { makeAclContent } from "../authz/wac-acl.js";
 import { makeAcrContent } from "../authz/acp-acr.js";
 import { CliArgsPopulate } from "../populate/populate-args.js";
-import {
-  AccountApiInfo,
-  createAccountPod,
-  createEmptyAccount,
-  createPassword,
-  getAccountApiInfo,
-  getAccountInfo,
-} from "../solid/css-v7-accounts-api.js";
+import { getAccountApiInfo } from "../solid/css-accounts-api.js";
 import {
   AccountCreateOrder,
   CreateAccountMethod,

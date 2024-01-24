@@ -7,16 +7,14 @@ import { ResponseError } from "../utils/error.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import { DurationCounter } from "../utils/duration-counter.js";
 import { KeyPair } from "@inrupt/solid-client-authn-core/src/authenticatedFetch/dpopUtils";
+import { accountLogin, createClientCredential } from "./css-v7-accounts-api.js";
 import {
   AccountApiInfo,
-  accountLogin,
-  createClientCredential,
   getAccountApiInfo,
   getAccountInfo,
-} from "./css-v7-accounts-api.js";
+} from "./css-accounts-api.js";
 import { CliArgsCommon } from "../common/cli-args.js";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
-import fetch from "node-fetch";
 import { getWebIDs } from "./css-v7-accounts-api.js";
 import { fetchWithLog } from "../utils/verbosity.js";
 

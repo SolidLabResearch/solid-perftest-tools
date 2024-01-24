@@ -20,5 +20,5 @@ const nodeMajorVersion = parseInt(
   process.version.substring(1, process.version.indexOf("."))
 );
 
-//only in nodejs 18!
-export const es6fetch = nodeMajorVersion >= 18 ? fetch : nodeFetch;
+// //only in nodejs 18!
+// export const es6fetch = nodeMajorVersion >= 18 ? fetch : nodeFetch;

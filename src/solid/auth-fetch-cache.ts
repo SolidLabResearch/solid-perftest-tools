@@ -14,7 +14,6 @@ import { DurationCounter } from "../utils/duration-counter.js";
 import { promises as fs } from "fs";
 import * as jose from "jose";
 import { fromNow } from "../utils/time-helpers.js";
-import nodeFetch from "node-fetch";
 import {
   CreateAccountMethod,
   MachineLoginMethod,
@@ -88,7 +87,7 @@ export class AuthFetchCache {
     this.accountInfos = accountInfos;
     this.authenticate = authenticate;
     this.authenticateCache = authenticateCache;
-    this.fetcher = nodeFetch; //cli.fetcher TODO ? nodeFetch : es6fetch;;
+    this.fetcher = fetch;
 
     //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
     let i = 0;
@@ -584,7 +583,7 @@ export class AuthFetchCache {
         "get",
         pod.podUri,
         this.cssTokensByUser[userIndex]!,
-        nodeFetch,
+        fetch,
         null,
         null,
         null,
