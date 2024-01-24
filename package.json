@@ -1,6 +1,6 @@
 {
   "name": "@imec-ilabt/solid-perftest-tools",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
@@ -10,8 +10,8 @@
     "solid-account-file-merger": "./bin/utils/account-file-merger.js",
     "solid-auth-cache-merger": "./bin/utils/auth-cache-merger.js"
   },
-  "exports": "./bin/populate/solid-populate-lib.js",
-  "types": "./bin/populate/solid-populate-lib.d.ts",
+  "exports": "./bin/populate/populate-lib.js",
+  "types": "./bin/populate/populate-lib.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
