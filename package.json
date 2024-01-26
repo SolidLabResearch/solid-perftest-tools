@@ -1,6 +1,6 @@
 {
   "name": "@imec-ilabt/solid-perftest-tools",
-  "version": "1.2.5",
+  "version": "1.2.7",
   "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
@@ -19,7 +19,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "tsc": "tsc",
     "build": "tsc && npx rollup bin/populate/populate-lib.js --file bin/populate/populate-lib.cjs --format cjs && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js",
-    "prepublish": "tsc && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js"
+    "prepublish": "tsc && npx rollup bin/populate/populate-lib.js --file bin/populate/populate-lib.cjs --format cjs && chmod u+x ./bin/populate/populate-main.js ./bin/flood/flood.js ./bin/flood/flood-worker.js ./bin/utils/account-file-merger.js ./bin/utils/auth-cache-merger.js"
   },
   "repository": {
     "type": "git",

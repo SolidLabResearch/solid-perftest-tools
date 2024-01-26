@@ -28,8 +28,9 @@ export async function populateServersFromDir({
   //One assumption that follows from that, is that the CLI args given are available.
   //Since we call as a library here, there are no CliArgs.
   //To work around this, we generate CliArgs that request what we want to do.
+  const verbosity_count = verbose ? 2 : 0;
   const cli: CliArgsPopulate = {
-    verbosity_count: verbose ? 2 : 0,
+    verbosity_count,
     accountSourceTemplateCreateAccountMethod: undefined,
     accountSourceTemplateCreateAccountUri: "",
 
@@ -56,10 +57,14 @@ export async function populateServersFromDir({
     generatedDataBaseDir: Object.values(urlToDirMap)[0],
     baseRdfFile: undefined,
 
-    v3: (message?: any, ...optionalParams: any[]) => {},
-    v2: (message?: any, ...optionalParams: any[]) => {},
+    v3: (message?: any, ...optionalParams: any[]) => {
+      if (verbosity_count >= 3) console.log(message, ...optionalParams);
+    },
+    v2: (message?: any, ...optionalParams: any[]) => {
+      if (verbosity_count >= 2) console.log(message, ...optionalParams);
+    },
     v1: (message?: any, ...optionalParams: any[]) => {
-      if (verbose) console.log(message, ...optionalParams);
+      if (verbosity_count >= 1) console.log(message, ...optionalParams);
     },
   };
 
