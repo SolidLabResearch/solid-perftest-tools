@@ -24,9 +24,12 @@ export async function populateServersFromDir({
   urlToDirMap: { [accountCreateUri: string]: string };
   authorization: "WAC" | "ACP" | undefined;
 }): Promise<PodAndOwnerInfo[]> {
-  //just hack together some CliArgs for consistency
+  //solidlab-perftest-tools was written to work from CLI
+  //One assumption that follows from that, is that the CLI args given are available.
+  //Since we call as a library here, there are no CliArgs.
+  //To work around this, we generate CliArgs that request what we want to do.
   const cli: CliArgsPopulate = {
-    verbosity_count: verbose ? 1 : 0,
+    verbosity_count: verbose ? 2 : 0,
     accountSourceTemplateCreateAccountMethod: undefined,
     accountSourceTemplateCreateAccountUri: "",
 
@@ -72,9 +75,11 @@ export async function populateServersFromDir({
 
     let currentCreatedUsersInfo: PodAndOwnerInfoAndDirInfo[];
     if (cli.accountAction !== AccountAction.UseExisting) {
-      console.log(
-        `Will generate user & pod for server ${ssAccountCreateUri}: ${JSON.stringify(
-          accounts,
+      cli.v1(
+        `Will generate ${
+          accounts.length
+        } user & pod for server ${ssAccountCreateUri}. First account=${JSON.stringify(
+          accounts ? accounts[0] : "empty account list",
           null,
           3
         )}`
@@ -82,6 +87,7 @@ export async function populateServersFromDir({
       currentCreatedUsersInfo = (
         await generateAccountsAndPods(cli, accounts)
       ).map((p) => ({ ...p, dir }));
+      cli.v2(`Created ${currentCreatedUsersInfo.length} accounts & pods`);
     } else {
       //TODO get info on existing accounts, or throw error
       throw Error(
@@ -104,6 +110,7 @@ export async function populateServersFromDir({
     );
     await authFetchCache.discoverMachineLoginMethods();
 
+    cli.v1(`Uploading files to pods`);
     await populatePodsFromDir(
       createdUsersInfo,
       authFetchCache,
@@ -111,7 +118,12 @@ export async function populateServersFromDir({
       cli.addAclFiles,
       cli.addAcrFiles
     );
+    cli.v1(`Uploaded files to pods`);
   }
+
+  cli.v2(
+    `Finished creating accounts+pods & uploading content. Total: ${createdUsersInfo.length}`
+  );
 
   return createdUsersInfo;
 }

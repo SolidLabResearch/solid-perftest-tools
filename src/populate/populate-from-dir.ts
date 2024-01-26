@@ -72,7 +72,7 @@ export async function populatePodsFromDir(
   //      (accounts and pod names are always assumed to be the same)
   //  in these subdirs, are the files to be stored in these pod
 
-  console.debug(
+  cli.v3(
     `populatePodsFromDir(usersInfos.length=${usersInfos.length}, usersInfos[0].webID=${usersInfos[0]?.webID}, ` +
       `usersInfos[0].dir=${usersInfos[0].dir}, addAclFiles=${addAclFiles}, addAcrFiles=${addAcrFiles})`
   );
@@ -82,22 +82,25 @@ export async function populatePodsFromDir(
 
     const podListing = await makeDirListing(pod.dir, true);
 
-    // console.log(
-    //   `populatePodsFromDir will create dirs in pod ${account}: ${JSON.stringify(
-    //     podListing.dirs.map((e) => e.pathFromBase),
+    if (!podListing.files) {
+      cli.v2(
+        `populatePodsFromDir will skip empty ${pod.dir} for pod ${pod.podUri}`
+      );
+      continue;
+    }
+
+    cli.v2(
+      `populatePodsFromDir will upload ${podListing.files.length} files to pod ${pod.podUri}. First file: "${podListing.files[0].pathFromBase}"`
+    );
+    // cli.v3(
+    //   `populatePodsFromDir will upload files to pod ${
+    //     pod.podUri
+    //   }: ${JSON.stringify(
+    //     podListing.files.map((e) => e.pathFromBase),
     //     null,
     //     3
     //   )}`
     // );
-    console.log(
-      `populatePodsFromDir will upload files to pod ${
-        pod.podUri
-      }: ${JSON.stringify(
-        podListing.files.map((e) => e.pathFromBase),
-        null,
-        3
-      )}`
-    );
 
     //We don't need to create containers, they should be auto created according to the spec
     // for (const dirToCreate of podListing.dirs) {
@@ -113,7 +116,7 @@ export async function populatePodsFromDir(
         0,
         filePathInPod.length - fileName.length
       );
-      cli.v1(
+      cli.v3(
         `Uploading. account=${pod.username} file='${podFilePath}' filePathInPod='${filePathInPod}'`
       );
 

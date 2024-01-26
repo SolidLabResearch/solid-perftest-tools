@@ -42,6 +42,7 @@ export async function generateAccountsAndPods(
     }
     const createAccountInfo = createAccountInfoByServer[serverBaseUrl];
 
+    cli.v2(`Creating "${accountCreateOrder.username}" account and pod `);
     const createdUserInfo = await createAccount(cli, {
       ...accountCreateOrder,
       createAccountMethod: createAccountInfo[0],
