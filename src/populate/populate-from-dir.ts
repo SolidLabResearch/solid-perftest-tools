@@ -83,13 +83,13 @@ export async function populatePodsFromDir(
     const podListing = await makeDirListing(pod.dir, true);
 
     if (!podListing.files) {
-      cli.v2(
+      cli.v1(
         `populatePodsFromDir will skip empty ${pod.dir} for pod ${pod.podUri}`
       );
       continue;
     }
 
-    cli.v2(
+    cli.v1(
       `populatePodsFromDir will upload ${podListing.files.length} files to pod ${pod.podUri}. First file: "${podListing.files[0].pathFromBase}"`
     );
     // cli.v3(

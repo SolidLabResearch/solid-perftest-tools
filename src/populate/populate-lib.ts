@@ -11,7 +11,11 @@ import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { AnyFetchType } from "../utils/generic-fetch.js";
 import { CliArgsPopulate } from "./populate-args.js";
 import { AccountAction, AccountSource } from "../common/interfaces.js";
-import { generateAccountsAndPods } from "./generate-account-pod.js";
+import {
+  generateAccountsAndPods,
+  GenerateAccountsAndPodsCache,
+} from "./generate-account-pod.js";
+import * as Path from "path";
 
 export type { PodAndOwnerInfo } from "../common/interfaces.js";
 
@@ -19,16 +23,18 @@ export async function populateServersFromDir({
   verbose,
   urlToDirMap,
   authorization,
+  populateCacheDir,
 }: {
   verbose: boolean;
   urlToDirMap: { [accountCreateUri: string]: string };
   authorization: "WAC" | "ACP" | undefined;
+  populateCacheDir: string;
 }): Promise<PodAndOwnerInfo[]> {
   //solidlab-perftest-tools was written to work from CLI
   //One assumption that follows from that, is that the CLI args given are available.
   //Since we call as a library here, there are no CliArgs.
   //To work around this, we generate CliArgs that request what we want to do.
-  const verbosity_count = verbose ? 2 : 0;
+  const verbosity_count = verbose ? 1 : 0;
   const cli: CliArgsPopulate = {
     verbosity_count,
     accountSourceTemplateCreateAccountMethod: undefined,
@@ -68,6 +74,11 @@ export async function populateServersFromDir({
     },
   };
 
+  const generateAccountsAndPodsCache =
+    await GenerateAccountsAndPodsCache.fromFile(
+      Path.join(populateCacheDir, "generateAccountsAndPodsCache.json")
+    );
+
   const createdUsersInfo: PodAndOwnerInfoAndDirInfo[] = [];
   for (const [ssAccountCreateUri, dir] of Object.entries(urlToDirMap)) {
     //Beware: accounts are indexed PER server in this setup.
@@ -90,7 +101,11 @@ export async function populateServersFromDir({
         )}`
       );
       currentCreatedUsersInfo = (
-        await generateAccountsAndPods(cli, accounts)
+        await generateAccountsAndPods(
+          cli,
+          accounts,
+          generateAccountsAndPodsCache
+        )
       ).map((p) => ({ ...p, dir }));
       cli.v2(`Created ${currentCreatedUsersInfo.length} accounts & pods`);
     } else {
@@ -126,7 +141,7 @@ export async function populateServersFromDir({
     cli.v1(`Uploaded files to pods`);
   }
 
-  cli.v2(
+  cli.v1(
     `Finished creating accounts+pods & uploading content. Total: ${createdUsersInfo.length}`
   );
 
