@@ -60,10 +60,10 @@ export class AuthFetchCache {
   authenticateCache: "none" | "token" | "all" = "none";
   authenticate: boolean = false;
 
-  accountInfos: Array<PodAndOwnerInfo> = [];
-  cssTokensByUser: Array<UserToken | null> = [];
-  authAccessTokenByUser: Array<AccessToken | null> = [];
-  authFetchersByUser: Array<AnyFetchType | null> = [];
+  accountInfos: Record<string, PodAndOwnerInfo> = {};
+  cssTokensByUser: Record<string, UserToken | null> = {};
+  authAccessTokenByUser: Record<string, AccessToken | null> = {};
+  authFetchersByUser: Record<string, AnyFetchType | null> = {};
   loadedAuthCacheMeta: Object = {};
 
   useCount: number = 0;
@@ -84,21 +84,26 @@ export class AuthFetchCache {
     authenticateCache: "none" | "token" | "all"
   ) {
     this.cli = cli;
-    this.accountInfos = accountInfos;
+    this.accountInfos = Object.fromEntries(
+      accountInfos.map((p) => [this.toKey(p), p])
+    );
     this.authenticate = authenticate;
     this.authenticateCache = authenticateCache;
     this.fetcher = fetch;
 
-    //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
-    let i = 0;
+    //We require unique accountInfos
+    let check = new Set();
     for (const accountInfo of accountInfos) {
-      if (accountInfo.index != i) {
-        throw new Error(
-          `Unexpected accountInfo index ${accountInfo.index} at index ${i}`
-        );
+      const k = this.toKey(accountInfo);
+      if (check.has(k)) {
+        throw new Error(`Duplicate pod: ${JSON.stringify(accountInfo)}`);
       }
-      i++;
+      check.add(k);
     }
+  }
+
+  toKey(pod: PodAndOwnerInfo): string {
+    return `${pod.webID}-${pod.oidcIssuer}-${pod.podUri}`;
   }
 
   async discoverMachineLoginMethods(): Promise<void> {
@@ -111,7 +116,7 @@ export class AuthFetchCache {
     } = {};
 
     //We only require unique indexes, but we check more stringent. This may be relaxed if needed.
-    for (const accountInfo of this.accountInfos) {
+    for (const [k, accountInfo] of Object.entries(this.accountInfos)) {
       if (!accountInfo.machineLoginMethod || !accountInfo.machineLoginUri) {
         const serverBaseUrl = getServerBaseUrl(
           accountInfo.machineLoginUri || accountInfo.oidcIssuer
@@ -143,17 +148,19 @@ export class AuthFetchCache {
     );
   }
 
-  expireAccessToken(userId: number) {
+  expireAccessToken(pod: PodAndOwnerInfo) {
+    const key = this.toKey(pod);
     //remove access token if it is about to expire
-    const at = this.authAccessTokenByUser[userId];
+    const at = this.authAccessTokenByUser[key];
     if (at && !stillUsableAccessToken(at, 60)) {
-      this.authAccessTokenByUser[userId] = null;
-      this.authFetchersByUser[userId] = null;
+      this.authAccessTokenByUser[key] = null;
+      this.authFetchersByUser[key] = null;
     }
   }
 
   async getPodAuth(pod: PodAndOwnerInfo): Promise<PodAuth> {
-    console.assert(pod.index < this.accountInfos.length);
+    const key = this.toKey(pod);
+
     this.useCount++;
     if (!this.authenticate) {
       return {
@@ -162,20 +169,20 @@ export class AuthFetchCache {
         userToken: undefined,
       };
     }
-    this.expireAccessToken(pod.index);
+    this.expireAccessToken(pod);
     let userToken = null;
     let accessToken = null;
     let theFetch = null;
     if (this.authenticateCache !== "none") {
-      if (this.cssTokensByUser[pod.index]) {
-        userToken = this.cssTokensByUser[pod.index];
+      if (this.cssTokensByUser[key]) {
+        userToken = this.cssTokensByUser[key];
       }
       if (this.authenticateCache === "all") {
-        if (this.authAccessTokenByUser[pod.index]) {
-          accessToken = this.authAccessTokenByUser[pod.index];
+        if (this.authAccessTokenByUser[key]) {
+          accessToken = this.authAccessTokenByUser[key];
         }
-        if (this.authFetchersByUser[pod.index]) {
-          theFetch = this.authFetchersByUser[pod.index];
+        if (this.authFetchersByUser[key]) {
+          theFetch = this.authFetchersByUser[key];
         }
       }
     }
@@ -203,20 +210,14 @@ export class AuthFetchCache {
       this.authFetchCount++;
     }
 
-    if (this.authenticateCache !== "none" && !this.cssTokensByUser[pod.index]) {
-      this.cssTokensByUser[pod.index] = userToken;
+    if (this.authenticateCache !== "none" && !this.cssTokensByUser[key]) {
+      this.cssTokensByUser[key] = userToken;
     }
-    if (
-      this.authenticateCache === "all" &&
-      !this.authAccessTokenByUser[pod.index]
-    ) {
-      this.authAccessTokenByUser[pod.index] = accessToken;
+    if (this.authenticateCache === "all" && !this.authAccessTokenByUser[key]) {
+      this.authAccessTokenByUser[key] = accessToken;
     }
-    if (
-      this.authenticateCache === "all" &&
-      !this.authFetchersByUser[pod.index]
-    ) {
-      this.authFetchersByUser[pod.index] = theFetch;
+    if (this.authenticateCache === "all" && !this.authFetchersByUser[key]) {
+      this.authFetchersByUser[key] = theFetch;
     }
 
     return {
@@ -267,17 +268,19 @@ export class AuthFetchCache {
       `Caching ${userCount} user logins (cache method="${this.authenticateCache}")...`
     );
 
+    const keys = Object.keys(this.accountInfos);
     for (let userIndex = 0; userIndex < userCount; userIndex++) {
-      this.authFetchersByUser[userIndex] = null;
+      const key = keys[userIndex];
+      this.authFetchersByUser[key] = null;
 
-      const pod = this.accountInfos[userIndex];
+      const pod = this.accountInfos[key];
 
       process.stdout.write(
         `   Pre-cache is authenticating user ${
           userIndex + 1
         }/${userCount}...                                        \r`
       );
-      let token = this.cssTokensByUser[userIndex];
+      let token = this.cssTokensByUser[key];
       if (!token) {
         process.stdout.write(
           `   Pre-cache is authenticating user ${
@@ -290,7 +293,7 @@ export class AuthFetchCache {
           this.fetcher,
           this.tokenFetchDuration
         );
-        this.cssTokensByUser[userIndex] = token;
+        this.cssTokensByUser[key] = token;
         this.tokenFetchCount++;
         countUTFetch++;
       } else {
@@ -299,7 +302,7 @@ export class AuthFetchCache {
 
       if (this.authenticateCache === "all") {
         const now = new Date();
-        const curAccessToken = this.authAccessTokenByUser[userIndex];
+        const curAccessToken = this.authAccessTokenByUser[key];
         const atInfo = curAccessToken?.expire
           ? `(expires ${fromNow(curAccessToken?.expire)})`
           : `(none)`;
@@ -316,10 +319,10 @@ export class AuthFetchCache {
           this.authAccessTokenDuration,
           this.authFetchDuration,
           this.generateDpopKeyPairDurationCounter,
-          this.authAccessTokenByUser[userIndex],
+          this.authAccessTokenByUser[key],
           ensureAuthExpirationS
         );
-        const wasReused = this.authAccessTokenByUser[userIndex] == accessToken;
+        const wasReused = this.authAccessTokenByUser[key] == accessToken;
         if (!wasReused) {
           countATFetch++;
         } else {
@@ -337,10 +340,10 @@ export class AuthFetchCache {
             ensureAuthExpirationS
           );
           earliestATCurAT = accessToken;
-          earliestATPreviousAT = this.authAccessTokenByUser[userIndex];
+          earliestATPreviousAT = this.authAccessTokenByUser[key];
         }
-        this.authAccessTokenByUser[userIndex] = accessToken;
-        this.authFetchersByUser[userIndex] = fetch;
+        this.authAccessTokenByUser[key] = accessToken;
+        this.authFetchersByUser[key] = fetch;
         this.authFetchCount++;
       }
     }
@@ -377,20 +380,22 @@ export class AuthFetchCache {
 
     const now = new Date();
     let allValid = true;
+    const keys = Object.keys(this.accountInfos);
     for (let userIndex = 0; userIndex < userCount; userIndex++) {
+      const key = keys[userIndex];
       process.stdout.write(
         `   Validating user ${userIndex + 1}/${userCount}...\r`
       );
-      this.authFetchersByUser[userIndex] = null;
-      const account = `user${userIndex}`;
+      this.authFetchersByUser[key] = null;
+      const account = this.accountInfos[key].username;
 
-      const token = this.cssTokensByUser[userIndex];
+      const token = this.cssTokensByUser[key];
       if (!token) {
         console.warn(`   No user token for ${account}`);
         allValid = false;
       }
 
-      const accessToken = this.authAccessTokenByUser[userIndex];
+      const accessToken = this.authAccessTokenByUser[key];
       if (this.authenticateCache === "all" && !accessToken) {
         console.warn(`   No access token for ${account}`);
         allValid = false;
@@ -425,11 +430,13 @@ export class AuthFetchCache {
     console.log(
       `Testing ${accountCount} solid logins (authenticate=${this.authenticate} authenticateCache="${this.authenticateCache}")...`
     );
-    console.assert(accountCount < this.accountInfos.length);
+    const keys = Object.keys(this.accountInfos);
+    console.assert(accountCount < keys.length);
 
     let allSuccess = true;
     for (let accountIndex = 0; accountIndex < accountCount; accountIndex++) {
-      const accountInfo = this.accountInfos[accountIndex];
+      const key = keys[accountIndex];
+      const accountInfo = this.accountInfos[key];
       process.stdout.write(
         `   Testing account ${accountIndex + 1}/${accountCount} (${
           accountInfo.username
@@ -518,9 +525,9 @@ export class AuthFetchCache {
     return {
       authenticateCache: this.authenticateCache,
       authenticate: this.authenticate,
-      lenCssTokensByUser: this.cssTokensByUser.length,
-      lenAuthAccessTokenByUser: this.authAccessTokenByUser.length,
-      lenAuthFetchersByUser: this.authFetchersByUser.length,
+      lenCssTokensByUser: Object.keys(this.cssTokensByUser).length,
+      lenAuthAccessTokenByUser: Object.keys(this.authAccessTokenByUser).length,
+      lenAuthFetchersByUser: Object.keys(this.authFetchersByUser).length,
       useCount: this.useCount,
       tokenFetchCount: this.tokenFetchCount,
       authFetchCount: this.authFetchCount,
@@ -534,7 +541,7 @@ export class AuthFetchCache {
   async dump(): Promise<DumpType> {
     const accessTokenForJson: (CacheAuthAccessToken | null)[] =
       await Promise.all(
-        [...this.authAccessTokenByUser].map(async (accessToken) =>
+        Object.values(this.authAccessTokenByUser).map(async (accessToken) =>
           !accessToken
             ? null
             : {
@@ -554,7 +561,7 @@ export class AuthFetchCache {
       );
     return {
       timestamp: new Date().toISOString(),
-      cssTokensByUser: this.cssTokensByUser,
+      cssTokensByUser: Object.values(this.cssTokensByUser),
       authAccessTokenByUser: accessTokenForJson,
     };
   }
@@ -568,13 +575,10 @@ export class AuthFetchCache {
     podFilename: string,
     csvFile: string
   ) {
+    const keys = Object.keys(this.accountInfos);
     const csvLines: string[] = [];
-    for (
-      let userIndex = 0;
-      userIndex < this.cssTokensByUser.length;
-      userIndex++
-    ) {
-      const account = `user${userIndex}`;
+    for (let userIndex = 0; userIndex < keys.length; userIndex++) {
+      const key = keys[userIndex];
       const resourceUrl = joinUri(pod.podUri, podFilename);
 
       const [authHeaders, accessToken] = await getFetchAuthHeaders(
@@ -582,12 +586,12 @@ export class AuthFetchCache {
         pod,
         "get",
         pod.podUri,
-        this.cssTokensByUser[userIndex]!,
+        this.cssTokensByUser[key]!,
         fetch,
         null,
         null,
         null,
-        this.authAccessTokenByUser[userIndex],
+        this.authAccessTokenByUser[key],
         3600
       );
       csvLines.push(
@@ -621,7 +625,7 @@ export class AuthFetchCache {
       timestamp: c.timestamp,
       filename: c.filename,
     };
-    for (const accessToken of this.authAccessTokenByUser.values()) {
+    for (const accessToken of Object.values(this.authAccessTokenByUser)) {
       if (accessToken) {
         //because we got if from JSON, accessToken.dpopKeyPair.privateKey will be PKCS8, not a KeyLike!
         accessToken.dpopKeyPair.privateKey = await jose.importPKCS8(

@@ -12,6 +12,7 @@ import {
   getServerBaseUrl,
 } from "../utils/solid-server-detect.js";
 import fs from "fs";
+import { promiseAllWithLimit } from "../utils/async-limiter";
 
 export class GenerateAccountsAndPodsCache {
   cacheFilename?: string = undefined;
@@ -43,6 +44,11 @@ export class GenerateAccountsAndPodsCache {
   }
 
   get(accountCreateOrder: AccountCreateOrder): PodAndOwnerInfo | undefined {
+    console.log(
+      `GenerateAccountsAndPodsCache.get() index=${this.index(
+        accountCreateOrder
+      )}`
+    );
     return this.createdPods[this.index(accountCreateOrder)];
   }
 
@@ -51,6 +57,11 @@ export class GenerateAccountsAndPodsCache {
   ): Promise<GenerateAccountsAndPodsCache> {
     const fileContent = await fs.promises.readFile(cacheFilename, "utf-8");
     const createdPods = JSON.parse(fileContent);
+    console.log(
+      `Read GenerateAccountsAndPodsCache from file "${cacheFilename}", saw ${
+        Object.keys(createdPods).length
+      } pods.`
+    );
     return new GenerateAccountsAndPodsCache(cacheFilename, createdPods);
   }
 }
@@ -58,7 +69,8 @@ export class GenerateAccountsAndPodsCache {
 export async function generateAccountsAndPods(
   cli: CliArgsPopulate,
   accountCreateOrders: AccountCreateOrder[],
-  generateAccountsAndPodsCache?: GenerateAccountsAndPodsCache
+  generateAccountsAndPodsCache?: GenerateAccountsAndPodsCache,
+  maxParallelism: number = 1
 ): Promise<PodAndOwnerInfo[]> {
   let i = 0;
   const res: PodAndOwnerInfo[] = [];
@@ -66,6 +78,8 @@ export async function generateAccountsAndPods(
   const createAccountInfoByServer: {
     [url: string]: [CreateAccountMethod, string];
   } = {};
+
+  const workToDo: (() => Promise<void>)[] = [];
 
   for (const accountCreateOrder of accountCreateOrders) {
     console.assert(
@@ -94,21 +108,38 @@ export async function generateAccountsAndPods(
       res.push(existingAccount);
     }
     if (mustCreate) {
-      cli.v1(
-        `Creating "${accountCreateOrder.username}" account and pod (${i}/${accountCreateOrders.length})`
-      );
-      const createdUserInfo = await createAccount(cli, {
-        ...accountCreateOrder,
-        createAccountMethod: createAccountInfo[0],
-        createAccountUri: createAccountInfo[1],
+      workToDo.push(() => {
+        return (async () => {
+          cli.v1(
+            `Creating "${accountCreateOrder.username}" account and pod (${i}/${accountCreateOrders.length})`
+          );
+          i += 1;
+          const createdUserInfo = await createAccount(cli, {
+            ...accountCreateOrder,
+            createAccountMethod: createAccountInfo[0],
+            createAccountUri: createAccountInfo[1],
+          });
+          if (createdUserInfo) {
+            generateAccountsAndPodsCache?.add(
+              accountCreateOrder,
+              createdUserInfo
+            );
+            res.push(createdUserInfo);
+          }
+        })();
       });
-      if (createdUserInfo) {
-        generateAccountsAndPodsCache?.add(accountCreateOrder, createdUserInfo);
-        res.push(createdUserInfo);
-      }
     }
-
-    i += 1;
   }
+
+  if (workToDo) {
+    if (maxParallelism <= 1) {
+      for (const work of workToDo) {
+        await work();
+      }
+    } else {
+      await promiseAllWithLimit(maxParallelism, workToDo);
+    }
+  }
+
   return res;
 }

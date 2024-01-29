@@ -1,5 +1,7 @@
 import { readdir } from "node:fs/promises";
 import path from "path";
+import fs from "fs/promises";
+import { PathLike } from "node:fs";
 
 interface FileInfo {
   name: string;
@@ -51,4 +53,20 @@ export async function makeDirListing(
     }
   }
   return res;
+}
+
+export async function fileExists(path: PathLike): Promise<boolean> {
+  try {
+    return (await fs.stat(path)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+export async function dirExists(path: PathLike): Promise<boolean> {
+  try {
+    return (await fs.stat(path)).isDirectory();
+  } catch {
+    return false;
+  }
 }

@@ -5,6 +5,7 @@ import {
   findAccountsFromDir,
   PodAndOwnerInfoAndDirInfo,
   populatePodsFromDir,
+  UploadDirsCache,
 } from "./populate-from-dir.js";
 import { AccountCreateOrder, PodAndOwnerInfo } from "../common/interfaces.js";
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
@@ -16,7 +17,8 @@ import {
   GenerateAccountsAndPodsCache,
 } from "./generate-account-pod.js";
 import * as Path from "path";
-
+import fs from "fs/promises";
+import { dirExists, fileExists } from "../utils/file-utils";
 export type { PodAndOwnerInfo } from "../common/interfaces.js";
 
 export async function populateServersFromDir({
@@ -24,11 +26,13 @@ export async function populateServersFromDir({
   urlToDirMap,
   authorization,
   populateCacheDir,
+  maxParallelism,
 }: {
   verbose: boolean;
   urlToDirMap: { [accountCreateUri: string]: string };
   authorization: "WAC" | "ACP" | undefined;
   populateCacheDir: string;
+  maxParallelism?: number;
 }): Promise<PodAndOwnerInfo[]> {
   //solidlab-perftest-tools was written to work from CLI
   //One assumption that follows from that, is that the CLI args given are available.
@@ -74,10 +78,39 @@ export async function populateServersFromDir({
     },
   };
 
-  const generateAccountsAndPodsCache =
-    await GenerateAccountsAndPodsCache.fromFile(
-      Path.join(populateCacheDir, "generateAccountsAndPodsCache.json")
+  let generateAccountsAndPodsCache: GenerateAccountsAndPodsCache | undefined =
+    undefined;
+  let uploadDirsCache: UploadDirsCache | undefined = undefined;
+  if (populateCacheDir) {
+    if (!(await dirExists(populateCacheDir))) {
+      throw Error(`populateCacheDir "${populateCacheDir}" does not exist`);
+    }
+    let generateAccountsAndPodsCacheFile = Path.join(
+      populateCacheDir,
+      "generateAccountsAndPodsCache.json"
     );
+    let uploadDirsCacheFile = Path.join(
+      populateCacheDir,
+      "uploadDirsCache.json"
+    );
+
+    if (await fileExists(generateAccountsAndPodsCacheFile)) {
+      generateAccountsAndPodsCache =
+        await GenerateAccountsAndPodsCache.fromFile(
+          generateAccountsAndPodsCacheFile
+        );
+    } else {
+      generateAccountsAndPodsCache = new GenerateAccountsAndPodsCache(
+        generateAccountsAndPodsCacheFile
+      );
+    }
+
+    if (await fileExists(uploadDirsCacheFile)) {
+      uploadDirsCache = await UploadDirsCache.fromFile(uploadDirsCacheFile);
+    } else {
+      uploadDirsCache = new UploadDirsCache(uploadDirsCacheFile);
+    }
+  }
 
   const createdUsersInfo: PodAndOwnerInfoAndDirInfo[] = [];
   for (const [ssAccountCreateUri, dir] of Object.entries(urlToDirMap)) {
@@ -104,7 +137,8 @@ export async function populateServersFromDir({
         await generateAccountsAndPods(
           cli,
           accounts,
-          generateAccountsAndPodsCache
+          generateAccountsAndPodsCache,
+          maxParallelism
         )
       ).map((p) => ({ ...p, dir }));
       cli.v2(`Created ${currentCreatedUsersInfo.length} accounts & pods`);
@@ -116,9 +150,9 @@ export async function populateServersFromDir({
     }
 
     createdUsersInfo.push(
-      ...currentCreatedUsersInfo.map((p) => ({
+      ...currentCreatedUsersInfo.map((p, i) => ({
         ...p,
-        index: p.index + createdUsersInfo.length,
+        index: i + createdUsersInfo.length, //p.index + createdUsersInfo.length,
       }))
     );
 
@@ -136,7 +170,9 @@ export async function populateServersFromDir({
       authFetchCache,
       cli,
       cli.addAclFiles,
-      cli.addAcrFiles
+      cli.addAcrFiles,
+      uploadDirsCache,
+      maxParallelism
     );
     cli.v1(`Uploaded files to pods`);
   }
