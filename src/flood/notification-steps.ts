@@ -63,7 +63,8 @@ export async function stepNotificationsSubscribe(
   let curUserIndex = 0;
   for (let i = 0; i < cli.notificationSubscriptionCount; i++) {
     curUserIndex =
-      curUserIndex + 1 >= floodState.authFetchCache.accountInfos.length
+      curUserIndex + 1 >=
+      Object.values(floodState.authFetchCache.accountInfos).length
         ? 0
         : curUserIndex + 1;
 

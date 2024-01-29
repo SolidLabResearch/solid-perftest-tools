@@ -470,7 +470,7 @@ export function makeStatistics(
   return {
     pid: [pid],
     authFetchCache: {
-      pod_count: authFetchCache.accountInfos.length,
+      pod_count: Object.values(authFetchCache.accountInfos).length,
       stats: authFetchCache.toStatsObj(),
       durations: authCacheStatsToObj(authFetchCache),
     },
