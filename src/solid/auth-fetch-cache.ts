@@ -50,8 +50,8 @@ interface CacheAuthAccessToken {
 
 export interface DumpType {
   timestamp: string;
-  cssTokensByUser: Array<UserToken | null>;
-  authAccessTokenByUser: Array<CacheAuthAccessToken | null>;
+  cssTokensByUser: Record<string, UserToken | null>;
+  authAccessTokenByUser: Record<string, CacheAuthAccessToken | null>;
   filename?: string;
 }
 
@@ -77,6 +77,8 @@ export class AuthFetchCache {
 
   fetcher: AnyFetchType;
 
+  accountCount: number = 0;
+
   constructor(
     cli: CliArgsCommon,
     accountInfos: Array<PodAndOwnerInfo>,
@@ -87,6 +89,7 @@ export class AuthFetchCache {
     this.accountInfos = Object.fromEntries(
       accountInfos.map((p) => [this.toKey(p), p])
     );
+    this.accountCount = Object.keys(this.accountInfos).length;
     this.authenticate = authenticate;
     this.authenticateCache = authenticateCache;
     this.fetcher = fetch;
@@ -539,29 +542,34 @@ export class AuthFetchCache {
   }
 
   async dump(): Promise<DumpType> {
-    const accessTokenForJson: (CacheAuthAccessToken | null)[] =
-      await Promise.all(
-        Object.values(this.authAccessTokenByUser).map(async (accessToken) =>
-          !accessToken
-            ? null
-            : {
-                token: accessToken.token,
-                expire: accessToken.expire.getTime(),
-                dpopKeyPair: {
-                  publicKey: accessToken.dpopKeyPair.publicKey, //already a JWK
-                  privateKeyType: accessToken.dpopKeyPair.privateKey.type,
-                  // @ts-ignore
-                  privateKey: await jose.exportPKCS8(
-                    // @ts-ignore
-                    accessToken.dpopKeyPair.privateKey
-                  ),
-                },
-              }
+    const accessTokenForJson: Record<string, CacheAuthAccessToken | null> =
+      Object.fromEntries(
+        await Promise.all(
+          Object.entries(this.authAccessTokenByUser).map(
+            async ([user, accessToken]) => [
+              user,
+              !accessToken
+                ? null
+                : {
+                    token: accessToken.token,
+                    expire: accessToken.expire.getTime(),
+                    dpopKeyPair: {
+                      publicKey: accessToken.dpopKeyPair.publicKey, //already a JWK
+                      privateKeyType: accessToken.dpopKeyPair.privateKey.type,
+                      // @ts-ignore
+                      privateKey: await jose.exportPKCS8(
+                        // @ts-ignore
+                        accessToken.dpopKeyPair.privateKey
+                      ),
+                    },
+                  },
+            ]
+          )
         )
       );
     return {
       timestamp: new Date().toISOString(),
-      cssTokensByUser: Object.values(this.cssTokensByUser),
+      cssTokensByUser: { ...this.cssTokensByUser },
       authAccessTokenByUser: accessTokenForJson,
     };
   }
@@ -612,8 +620,14 @@ export class AuthFetchCache {
       !c.cssTokensByUser ||
       !c.authAccessTokenByUser ||
       !c.timestamp ||
-      !Array.isArray(c.cssTokensByUser) ||
-      !Array.isArray(c.authAccessTokenByUser)
+      !Object.keys(c.cssTokensByUser).every((k) => typeof k === "string") ||
+      !Object.values(c.cssTokensByUser).every((k) => typeof k === "object") ||
+      !Object.keys(c.authAccessTokenByUser).every(
+        (k) => typeof k === "string"
+      ) ||
+      !Object.values(c.authAccessTokenByUser).every(
+        (k) => typeof k === "object"
+      )
     ) {
       throw new Error(
         `Invalid content loaded for AuthFetchCache: ${cacheContent}`

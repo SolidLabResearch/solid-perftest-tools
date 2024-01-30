@@ -113,12 +113,14 @@ export async function populateServersFromDir({
   }
 
   const createdUsersInfo: PodAndOwnerInfoAndDirInfo[] = [];
-  for (const [ssAccountCreateUri, dir] of Object.entries(urlToDirMap)) {
+  for (const [ssAccountCreateUri, serverDirWithAccounts] of Object.entries(
+    urlToDirMap
+  )) {
     //Beware: accounts are indexed PER server in this setup.
     //        this works here, because there is an authFetchCache per server.
     //        But when modifying this code, be aware that authFetchCache relies on a unique index.
     const accounts: AccountCreateOrderAndDirInfo[] = await findAccountsFromDir(
-      dir,
+      serverDirWithAccounts,
       ssAccountCreateUri
     );
 
@@ -133,14 +135,12 @@ export async function populateServersFromDir({
           3
         )}`
       );
-      currentCreatedUsersInfo = (
-        await generateAccountsAndPods(
-          cli,
-          accounts,
-          generateAccountsAndPodsCache,
-          maxParallelism
-        )
-      ).map((p) => ({ ...p, dir }));
+      currentCreatedUsersInfo = await generateAccountsAndPods(
+        cli,
+        accounts,
+        generateAccountsAndPodsCache,
+        maxParallelism
+      );
       cli.v2(`Created ${currentCreatedUsersInfo.length} accounts & pods`);
     } else {
       //TODO get info on existing accounts, or throw error
@@ -163,6 +163,24 @@ export async function populateServersFromDir({
       "all"
     );
     await authFetchCache.discoverMachineLoginMethods();
+
+    cli.v1(`Pre-caching auth`);
+    let authCacheFile = populateCacheDir
+      ? Path.join(populateCacheDir, "authCache.json")
+      : null;
+    if (authCacheFile) {
+      if (await fileExists(authCacheFile)) {
+        await authFetchCache.load(authCacheFile);
+        await authFetchCache.validate(authFetchCache.accountCount, 60 * 10 * 3);
+      } else {
+        await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
+      }
+    } else {
+      await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
+    }
+    if (authCacheFile) {
+      await authFetchCache.save(authCacheFile);
+    }
 
     cli.v1(`Uploading files to pods`);
     await populatePodsFromDir(

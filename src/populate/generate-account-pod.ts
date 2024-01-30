@@ -13,6 +13,11 @@ import {
 } from "../utils/solid-server-detect.js";
 import fs from "fs";
 import { promiseAllWithLimit } from "../utils/async-limiter";
+import {
+  AccountCreateOrderAndDirInfo,
+  PodAndOwnerInfoAndDirInfo,
+} from "./populate-from-dir";
+import { string } from "yargs";
 
 export class GenerateAccountsAndPodsCache {
   cacheFilename?: string = undefined;
@@ -44,11 +49,6 @@ export class GenerateAccountsAndPodsCache {
   }
 
   get(accountCreateOrder: AccountCreateOrder): PodAndOwnerInfo | undefined {
-    console.log(
-      `GenerateAccountsAndPodsCache.get() index=${this.index(
-        accountCreateOrder
-      )}`
-    );
     return this.createdPods[this.index(accountCreateOrder)];
   }
 
@@ -66,19 +66,38 @@ export class GenerateAccountsAndPodsCache {
   }
 }
 
-export async function generateAccountsAndPods(
+type PodAndOwnerInfoAndMaybeDirInfo<T extends AccountCreateOrder> =
+  T extends AccountCreateOrderAndDirInfo
+    ? PodAndOwnerInfoAndDirInfo
+    : PodAndOwnerInfo;
+
+function hasDir(
+  accountCreateOrder: AccountCreateOrder | AccountCreateOrderAndDirInfo
+): accountCreateOrder is AccountCreateOrderAndDirInfo {
+  return (
+    (accountCreateOrder as AccountCreateOrderAndDirInfo).dir !== undefined &&
+    typeof (accountCreateOrder as AccountCreateOrderAndDirInfo).dir ===
+      "string" &&
+    (accountCreateOrder as AccountCreateOrderAndDirInfo).dir.length > 0
+  );
+}
+
+export async function generateAccountsAndPods<
+  AccountCreateOrderMaybeDir extends AccountCreateOrder
+>(
   cli: CliArgsPopulate,
-  accountCreateOrders: AccountCreateOrder[],
+  accountCreateOrders: AccountCreateOrderMaybeDir[],
   generateAccountsAndPodsCache?: GenerateAccountsAndPodsCache,
   maxParallelism: number = 1
-): Promise<PodAndOwnerInfo[]> {
+): Promise<PodAndOwnerInfoAndMaybeDirInfo<AccountCreateOrderMaybeDir>[]> {
   let i = 0;
-  const res: PodAndOwnerInfo[] = [];
+  const res: PodAndOwnerInfoAndMaybeDirInfo<AccountCreateOrderMaybeDir>[] = [];
 
   const createAccountInfoByServer: {
     [url: string]: [CreateAccountMethod, string];
   } = {};
 
+  let skipped = 0;
   const workToDo: (() => Promise<void>)[] = [];
 
   for (const accountCreateOrder of accountCreateOrders) {
@@ -105,31 +124,51 @@ export async function generateAccountsAndPods(
     let mustCreate = !existingAccount;
     if (existingAccount) {
       //TODO check existing account, set mustCreate=true if not existing and delete from cache
-      res.push(existingAccount);
+      res.push(
+        <PodAndOwnerInfoAndMaybeDirInfo<AccountCreateOrderMaybeDir>>(
+          existingAccount
+        )
+      );
+      skipped++;
     }
     if (mustCreate) {
-      workToDo.push(() => {
-        return (async () => {
-          cli.v1(
-            `Creating "${accountCreateOrder.username}" account and pod (${i}/${accountCreateOrders.length})`
-          );
-          i += 1;
-          const createdUserInfo = await createAccount(cli, {
-            ...accountCreateOrder,
-            createAccountMethod: createAccountInfo[0],
-            createAccountUri: createAccountInfo[1],
-          });
-          if (createdUserInfo) {
-            generateAccountsAndPodsCache?.add(
-              accountCreateOrder,
-              createdUserInfo
-            );
-            res.push(createdUserInfo);
+      workToDo.push(async () => {
+        cli.v1(
+          `Creating "${accountCreateOrder.username}" account and pod (${i}/${accountCreateOrders.length})`
+        );
+        i += 1;
+        const createdUserInfo: PodAndOwnerInfo = await createAccount(cli, {
+          ...accountCreateOrder,
+          createAccountMethod: createAccountInfo[0],
+          createAccountUri: createAccountInfo[1],
+        });
+        if (createdUserInfo) {
+          let createdUserInfoWithMaybeDir: PodAndOwnerInfoAndMaybeDirInfo<AccountCreateOrderMaybeDir>;
+          if (hasDir(accountCreateOrder)) {
+            const dir = accountCreateOrder.dir;
+            const t: AccountCreateOrderAndDirInfo = accountCreateOrder;
+            // @ts-ignore  not sure how to get the types right :-/
+            createdUserInfoWithMaybeDir = {
+              ...createdUserInfo,
+              dir,
+            };
+          } else {
+            const t: AccountCreateOrder = accountCreateOrder;
+            // @ts-ignore  not sure how to get the types right :-/
+            createdUserInfoWithMaybeDir = createdUserInfo;
           }
-        })();
+          generateAccountsAndPodsCache?.add(
+            accountCreateOrder,
+            createdUserInfoWithMaybeDir
+          );
+          res.push(createdUserInfoWithMaybeDir);
+        }
       });
     }
   }
+  cli.v1(
+    `Prepared pod creation for ${accountCreateOrders.length} account and pods. workToDo.length=${workToDo.length} skipped=${skipped}`
+  );
 
   if (workToDo) {
     if (maxParallelism <= 1) {

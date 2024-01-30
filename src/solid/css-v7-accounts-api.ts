@@ -14,6 +14,7 @@ import {
   getAccountInfo,
   UserToken,
 } from "./css-accounts-api.js";
+import assert from "node:assert";
 
 //see
 // https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/account/json-api.md
@@ -83,40 +84,59 @@ export async function createClientCredential(
     );
   }
   //see https://github.com/CommunitySolidServer/CommunitySolidServer/blob/main/documentation/markdown/usage/client-credentials.md
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000);
   const startTime = new Date().getTime();
   let res = null;
   let body = null;
-  try {
-    res = await fetchWithLog(
-      fetch,
-      "Creating Client Credential",
-      cli,
-      clientCredentialsEndpoint,
-      {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          Accept: "application/json",
-          Cookie: cookieHeader,
-        },
-        body: JSON.stringify({
-          webId: webId,
-        }),
-        signal: controller.signal,
-      }
-    );
+  let retryCount = 0;
+  let tryAgain = true;
+  while (tryAgain) {
+    tryAgain = false;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    try {
+      res = await fetchWithLog(
+        fetch,
+        "Creating Client Credential",
+        cli,
+        clientCredentialsEndpoint,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            Accept: "application/json",
+            Cookie: cookieHeader,
+          },
+          body: JSON.stringify({
+            webId: webId,
+          }),
+          signal: controller.signal,
+        }
+      );
 
-    body = await res.text();
-  } catch (error: any) {
-    if (error.name === "AbortError") {
-      console.error(`Creating Client Credential took too long: aborted`);
+      body = await res.text();
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        if (retryCount < 5) {
+          console.error(
+            `Creating Client Credential took too long: aborted. Will try again.`
+          );
+          tryAgain = true;
+          retryCount++;
+        } else {
+          console.error(`Creating Client Credential took too long: aborted`);
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    } finally {
+      clearTimeout(timeoutId);
     }
-    throw error;
-  } finally {
-    clearTimeout(timeoutId);
   }
+
+  assert(res !== null);
+  assert(body !== null);
+
   if (!res || !res.ok) {
     console.error(
       `${res.status} - Creating Client Credential for ${username} failed:`,

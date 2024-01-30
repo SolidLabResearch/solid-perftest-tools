@@ -131,6 +131,7 @@ export async function populatePodsFromDir(
   );
 
   const workTodoByServer: Record<string, (() => Promise<void>)[]> = {};
+  let skipCount = 0;
   for (const pod of usersInfos) {
     const podAuth = await authFetchCache.getPodAuth(pod);
 
@@ -144,7 +145,7 @@ export async function populatePodsFromDir(
     }
 
     cli.v1(
-      `populatePodsFromDir will upload ${podListing.files.length} files to pod ${pod.podUri}. First file: "${podListing.files[0].pathFromBase}"`
+      `populatePodsFromDir will prepare upload of ${podListing.files.length} files to pod ${pod.podUri} (${pod.index}). First file: "${podListing.files[0].pathFromBase}"`
     );
     // cli.v3(
     //   `populatePodsFromDir will upload files to pod ${
@@ -171,8 +172,8 @@ export async function populatePodsFromDir(
         filePathInPod.length - fileName.length
       );
 
-      const work = () =>
-        (async () => {
+      if (!uploadDirsCache || !uploadDirsCache.has(pod, filePathInPod)) {
+        const work = async () => {
           cli.v3(
             `Uploading. account=${pod.username} file='${podFilePath}' filePathInPod='${filePathInPod}'`
           );
@@ -211,8 +212,8 @@ export async function populatePodsFromDir(
             );
           }
           await uploadDirsCache?.add(pod, filePathInPod);
-        })();
-      if (!uploadDirsCache || !uploadDirsCache.has(pod, filePathInPod)) {
+        };
+
         if (!workTodoByServer[pod.oidcIssuer]) {
           workTodoByServer[pod.oidcIssuer] = [];
         }
@@ -220,9 +221,19 @@ export async function populatePodsFromDir(
       } else {
         //skip previously uploaded file
         //TODO test if file is actually uploaded?
+        skipCount++;
       }
     }
   }
+
+  const serverCount = Object.keys(workTodoByServer).length;
+  let uploadCount = 0;
+  for (const workToDo of Object.values(workTodoByServer)) {
+    uploadCount += workToDo.length;
+  }
+  cli.v1(
+    `populatePodsFromDir prepare done. Will now upload ${uploadCount} files to ${serverCount} servers. ${skipCount} uploads skipped because already done.`
+  );
 
   if (maxParallelism <= 1) {
     for (const workToDo of Object.values(workTodoByServer)) {

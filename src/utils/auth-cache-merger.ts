@@ -16,18 +16,22 @@ function main(): number {
   let curIndex = 0;
   const output: DumpType = {
     timestamp: new Date().toISOString(),
-    cssTokensByUser: [],
-    authAccessTokenByUser: [],
+    cssTokensByUser: {},
+    authAccessTokenByUser: {},
     filename: "/tmp/dummy",
   };
   for (const filename of argv._) {
     const fileContent = fs.readFileSync(filename, { encoding: "utf8" });
     const authCacheDump: DumpType = JSON.parse(fileContent);
-    for (const cssTokens of authCacheDump.cssTokensByUser) {
-      output.cssTokensByUser.push(cssTokens);
+    for (const [user, userToken] of Object.entries(
+      authCacheDump.cssTokensByUser
+    )) {
+      output.cssTokensByUser[user] = userToken;
     }
-    for (const authAccessToken of authCacheDump.authAccessTokenByUser) {
-      output.authAccessTokenByUser.push(authAccessToken);
+    for (const [user, authAccessToken] of Object.entries(
+      authCacheDump.authAccessTokenByUser
+    )) {
+      output.authAccessTokenByUser[user] = authAccessToken;
     }
   }
   process.stdout.write(JSON.stringify(output, null, 3));

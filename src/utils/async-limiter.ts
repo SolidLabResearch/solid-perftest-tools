@@ -9,12 +9,14 @@ export async function promiseAllWithLimit<T>(
   let cursor = workToDo.entries();
   const par = Array(maxParallelism)
     .fill(null)
-    .map(async () => {
-      for (let [index, work] of cursor) {
-        var r: Awaited<T> = await work();
-        res.push(r);
-      }
-    });
+    .map((asyncThreadIndex) =>
+      (async () => {
+        for (let [index, work] of cursor) {
+          var r: Awaited<T> = await work();
+          res.push(r);
+        }
+      })()
+    );
   await Promise.all(par);
   return res;
 }

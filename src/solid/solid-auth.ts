@@ -202,40 +202,110 @@ export async function getUsableAccessToken(
   const { id, secret } = token;
 
   let accessTokenDurationStart = null;
-  try {
-    if (
-      accessToken === null ||
-      !stillUsableAccessToken(accessToken, ensureAuthExpirationS)
-    ) {
-      const generateDpopKeyPairDurationStart = new Date().getTime();
-      const dpopKeyPair = await generateDpopKeyPair();
-      const authString = `${encodeURIComponent(id)}:${encodeURIComponent(
-        secret
-      )}`;
+  let retryCount = 0;
+  let doRetry = true;
+  while (doRetry) {
+    doRetry = false;
+    try {
+      if (
+        accessToken === null ||
+        !stillUsableAccessToken(accessToken, ensureAuthExpirationS)
+      ) {
+        const generateDpopKeyPairDurationStart = new Date().getTime();
+        const dpopKeyPair = await generateDpopKeyPair();
+        const authString = `${encodeURIComponent(id)}:${encodeURIComponent(
+          secret
+        )}`;
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      const url = `${pod.oidcIssuer}.oidc/token`; //ideally, fetch this from token_endpoint in .well-known/openid-configuration
-      if (generateDpopKeyPairDurationCounter !== null) {
-        generateDpopKeyPairDurationCounter.addDuration(
-          new Date().getTime() - generateDpopKeyPairDurationStart
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const url = `${pod.oidcIssuer}.oidc/token`; //ideally, fetch this from token_endpoint in .well-known/openid-configuration
+        if (generateDpopKeyPairDurationCounter !== null) {
+          generateDpopKeyPairDurationCounter.addDuration(
+            new Date().getTime() - generateDpopKeyPairDurationStart
+          );
+        }
+
+        accessTokenDurationStart = new Date().getTime();
+        const res = await fetchWithLog(
+          fetch,
+          "Creating access token",
+          cli,
+          url,
+          {
+            method: "POST",
+            headers: {
+              authorization: `Basic ${Buffer.from(authString).toString(
+                "base64"
+              )}`,
+              "content-type": "application/x-www-form-urlencoded",
+              dpop: await createDpopHeader(url, "POST", dpopKeyPair),
+            },
+            body: "grant_type=client_credentials&scope=webid",
+            signal: controller.signal,
+          }
         );
+
+        const body = await res.text();
+        clearTimeout(timeoutId);
+        if (
+          accessTokenDurationCounter !== null &&
+          accessTokenDurationStart !== null
+        ) {
+          accessTokenDurationCounter.addDuration(
+            new Date().getTime() - accessTokenDurationStart
+          );
+          accessTokenDurationStart = null;
+        }
+
+        if (!res.ok) {
+          console.error(
+            `${res.status} - Creating access token for ${pod.username} failed:`
+          );
+          console.error(body);
+          throw new ResponseError(res, body);
+        }
+
+        const { access_token: accessTokenStr, expires_in: expiresIn } =
+          JSON.parse(body);
+        const expire = new Date(
+          new Date().getTime() + parseInt(expiresIn) * 1000
+        );
+        accessToken = {
+          token: accessTokenStr,
+          expire: expire,
+          dpopKeyPair: dpopKeyPair,
+        };
+        cli.v3(
+          `Created Access Token using CSS token: \nusername=${pod.username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`
+        );
+
+        if (!stillUsableAccessToken(accessToken, ensureAuthExpirationS)) {
+          const msg =
+            `AccessToken was refreshed, but is not valid long enough.` +
+            `Must be valid for ${ensureAuthExpirationS}s, but is valid for ${expiresIn}s`;
+          console.error(msg);
+          throw new Error(msg);
+        }
       }
 
-      accessTokenDurationStart = new Date().getTime();
-      const res = await fetchWithLog(fetch, "Creating access token", cli, url, {
-        method: "POST",
-        headers: {
-          authorization: `Basic ${Buffer.from(authString).toString("base64")}`,
-          "content-type": "application/x-www-form-urlencoded",
-          dpop: await createDpopHeader(url, "POST", dpopKeyPair),
-        },
-        body: "grant_type=client_credentials&scope=webid",
-        signal: controller.signal,
-      });
-
-      const body = await res.text();
-      clearTimeout(timeoutId);
+      return accessToken;
+    } catch (error: any) {
+      if (error.name === "AbortError") {
+        if (retryCount < 5) {
+          console.error(
+            `Fetching access token took too long: aborted. Will retry.`
+          );
+          retryCount++;
+          doRetry = true;
+        } else {
+          console.error(`Fetching access token took too long: aborted`);
+          throw error;
+        }
+      } else {
+        throw error;
+      }
+    } finally {
       if (
         accessTokenDurationCounter !== null &&
         accessTokenDurationStart !== null
@@ -243,56 +313,11 @@ export async function getUsableAccessToken(
         accessTokenDurationCounter.addDuration(
           new Date().getTime() - accessTokenDurationStart
         );
-        accessTokenDurationStart = null;
       }
-
-      if (!res.ok) {
-        console.error(
-          `${res.status} - Creating access token for ${pod.username} failed:`
-        );
-        console.error(body);
-        throw new ResponseError(res, body);
-      }
-
-      const { access_token: accessTokenStr, expires_in: expiresIn } =
-        JSON.parse(body);
-      const expire = new Date(
-        new Date().getTime() + parseInt(expiresIn) * 1000
-      );
-      accessToken = {
-        token: accessTokenStr,
-        expire: expire,
-        dpopKeyPair: dpopKeyPair,
-      };
-      cli.v3(
-        `Created Access Token using CSS token: \nusername=${pod.username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`
-      );
-
-      if (!stillUsableAccessToken(accessToken, ensureAuthExpirationS)) {
-        const msg =
-          `AccessToken was refreshed, but is not valid long enough.` +
-          `Must be valid for ${ensureAuthExpirationS}s, but is valid for ${expiresIn}s`;
-        console.error(msg);
-        throw new Error(msg);
-      }
-    }
-
-    return accessToken;
-  } catch (error: any) {
-    if (error.name === "AbortError") {
-      console.error(`Fetching access token took too long: aborted`);
-    }
-    throw error;
-  } finally {
-    if (
-      accessTokenDurationCounter !== null &&
-      accessTokenDurationStart !== null
-    ) {
-      accessTokenDurationCounter.addDuration(
-        new Date().getTime() - accessTokenDurationStart
-      );
     }
   }
+  console.assert(false); //unreachable code
+  return <AccessToken>{};
 }
 
 export async function getUserAuthFetch(
