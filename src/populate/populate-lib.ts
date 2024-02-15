@@ -171,6 +171,8 @@ export async function populateServersFromDir({
     if (authCacheFile) {
       if (await fileExists(authCacheFile)) {
         await authFetchCache.load(authCacheFile);
+        //preCache will not fetch user or access tokens if they are still valid
+        await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
         await authFetchCache.validate(authFetchCache.accountCount, 60 * 10 * 3);
       } else {
         await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
