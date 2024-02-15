@@ -57,7 +57,7 @@ export class UploadDirsCache {
       const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
       const dirArr = [...this.createdDirs.values()];
       const newFileContent = JSON.stringify(dirArr, null, 3);
-      await fs.promises.writeFile(this.cacheFilename, newFileContent, {
+      await fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
         encoding: "utf-8",
       });
       await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
