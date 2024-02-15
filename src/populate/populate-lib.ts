@@ -105,10 +105,19 @@ export async function populateServersFromDir({
       );
     }
 
+    const uploadDirsCacheCallback = (count: number) => {
+      cli.v1(`Uploaded ${count} files...`);
+    };
     if (await fileExists(uploadDirsCacheFile)) {
-      uploadDirsCache = await UploadDirsCache.fromFile(uploadDirsCacheFile);
+      uploadDirsCache = await UploadDirsCache.fromFile(
+        uploadDirsCacheFile,
+        uploadDirsCacheCallback
+      );
     } else {
-      uploadDirsCache = new UploadDirsCache(uploadDirsCacheFile);
+      uploadDirsCache = new UploadDirsCache(
+        uploadDirsCacheFile,
+        uploadDirsCacheCallback
+      );
     }
   }
 

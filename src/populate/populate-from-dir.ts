@@ -19,14 +19,21 @@ import {
   promiseAllWithLimit,
   promiseAllWithLimitByServer,
 } from "../utils/async-limiter";
+import { copyFile } from "fs/promises";
 
 export class UploadDirsCache {
   cacheFilename?: string = undefined;
   createdDirs: Set<string> = new Set();
   saveCountDown: number = 0;
+  onSaveCallback: (count: number) => void;
 
-  constructor(cacheFilename?: string, createdPods?: Set<string>) {
+  constructor(
+    cacheFilename?: string,
+    onSaveCallback?: (count: number) => void,
+    createdPods?: Set<string>
+  ) {
     this.cacheFilename = cacheFilename;
+    this.onSaveCallback = onSaveCallback || ((a) => {});
     this.createdDirs = createdPods ? createdPods : new Set();
   }
 
@@ -41,16 +48,20 @@ export class UploadDirsCache {
     if (this.saveCountDown >= 100) {
       await this.flush();
       this.saveCountDown = 0;
+      this.onSaveCallback(this.createdDirs.size);
     }
   }
 
   async flush() {
     if (this.cacheFilename) {
+      const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
       const dirArr = [...this.createdDirs.values()];
       const newFileContent = JSON.stringify(dirArr, null, 3);
       await fs.promises.writeFile(this.cacheFilename, newFileContent, {
         encoding: "utf-8",
       });
+      await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
+      await fs.promises.rm(cacheFilenameTmp);
     }
   }
 
@@ -59,11 +70,12 @@ export class UploadDirsCache {
   }
 
   public static async fromFile(
-    cacheFilename: string
+    cacheFilename: string,
+    onSaveCallback?: (count: number) => void
   ): Promise<UploadDirsCache> {
     const fileContent = await fs.promises.readFile(cacheFilename, "utf-8");
     const createdPods: Set<string> = new Set(JSON.parse(fileContent));
-    return new UploadDirsCache(cacheFilename, createdPods);
+    return new UploadDirsCache(cacheFilename, onSaveCallback, createdPods);
   }
 }
 
@@ -186,7 +198,9 @@ export async function populatePodsFromDir(
             filePathInPod,
             podAuth,
             CONTENT_TYPE_BYTE, //TODO use correct content type
-            false
+            false,
+            true,
+            20
           );
 
           const authZTypes: ("ACP" | "WAC")[] = [];
@@ -208,7 +222,9 @@ export async function populatePodsFromDir(
               false,
               true,
               authZType,
-              false
+              false,
+              true,
+              15
             );
           }
           await uploadDirsCache?.add(pod, filePathInPod);

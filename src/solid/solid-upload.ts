@@ -144,7 +144,9 @@ export async function uploadPodFile(
   podFileRelative: string,
   podAuth: PodAuth,
   contentType: string,
-  debugLogging: boolean = false
+  debugLogging: boolean = false,
+  retryAll: boolean = false,
+  retryLimit: number = 5
 ) {
   let retry = true;
   let retryCount = 0;
@@ -191,7 +193,7 @@ export async function uploadPodFile(
       );
       console.error(body);
 
-      if (res.status === 408 && retryCount < 5) {
+      if ((res.status === 408 || retryAll) && retryCount < retryLimit) {
         retry = true;
         retryCount += 1;
         console.error(
@@ -289,7 +291,9 @@ export async function addAuthZFile(
   publicControl: boolean = false,
   debugLogging: boolean = false,
   authZType: "ACP" | "WAC" = "ACP",
-  isDir: boolean = false
+  isDir: boolean = false,
+  retryAll: boolean = false,
+  retryLimit: number = 5
 ) {
   let newAuthZContent;
   let fullPathPodFilename;
@@ -334,6 +338,8 @@ export async function addAuthZFile(
     fullPathPodFilename,
     podAuth,
     contentType,
-    debugLogging
+    debugLogging,
+    retryAll,
+    retryLimit
   );
 }
