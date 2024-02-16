@@ -9,7 +9,7 @@ import {
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_BYTE } from "../utils/content-type.js";
 import { CliArgsPopulate } from "./populate-args.js";
-import { makeDirListing } from "../utils/file-utils.js";
+import { fileExists, makeDirListing } from "../utils/file-utils.js";
 import {
   AccountCreateOrder,
   accountEmail,
@@ -20,6 +20,8 @@ import {
   promiseAllWithLimitByServer,
 } from "../utils/async-limiter";
 import { copyFile } from "fs/promises";
+
+import { lock, unlock } from "proper-lockfile";
 
 export class UploadDirsCache {
   cacheFilename?: string = undefined;
@@ -54,14 +56,29 @@ export class UploadDirsCache {
 
   async flush() {
     if (this.cacheFilename) {
-      const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
-      const dirArr = [...this.createdDirs.values()];
-      const newFileContent = JSON.stringify(dirArr, null, 3);
-      await fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
-        encoding: "utf-8",
-      });
-      await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
-      await fs.promises.rm(cacheFilenameTmp);
+      //get a file lock
+      await lock(this.cacheFilename);
+      try {
+        const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
+        const cacheFilenameTmp2 = `${this.cacheFilename}.TMP.OLD`;
+        const dirArr = [...this.createdDirs.values()];
+        const newFileContent = JSON.stringify(dirArr, null, 3);
+        await fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
+          encoding: "utf-8",
+        });
+        console.assert(await fileExists(cacheFilenameTmp));
+        // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
+        if (await fileExists(this.cacheFilename)) {
+          await fs.promises.rename(this.cacheFilename, cacheFilenameTmp2);
+        }
+        console.assert(await fileExists(cacheFilenameTmp));
+        await fs.promises.rename(cacheFilenameTmp, this.cacheFilename);
+        if (await fileExists(cacheFilenameTmp2)) {
+          await fs.promises.rm(cacheFilenameTmp2);
+        }
+      } finally {
+        await unlock(this.cacheFilename);
+      }
     }
   }
 
