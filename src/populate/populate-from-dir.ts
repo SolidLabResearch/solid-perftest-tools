@@ -23,6 +23,17 @@ import { copyFile } from "fs/promises";
 
 import { lock, unlock } from "proper-lockfile";
 
+// Node.js fs async function have no stacktrace
+// See https://github.com/nodejs/node/issues/30944
+// This works around that. And makes the code very ugly.
+async function fixFsStacktrace<T>(fsPromise: Promise<T>): Promise<T> {
+  try {
+    return await fsPromise;
+  } catch (e: any) {
+    throw new Error(e.message);
+  }
+}
+
 export class UploadDirsCache {
   cacheFilename?: string = undefined;
   createdDirs: Set<string> = new Set();
@@ -55,30 +66,42 @@ export class UploadDirsCache {
   }
 
   async flush() {
-    if (this.cacheFilename) {
-      //get a file lock
-      await lock(this.cacheFilename);
-      try {
-        const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
-        const cacheFilenameTmp2 = `${this.cacheFilename}.TMP.OLD`;
-        const dirArr = [...this.createdDirs.values()];
-        const newFileContent = JSON.stringify(dirArr, null, 3);
-        await fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
-          encoding: "utf-8",
-        });
-        console.assert(await fileExists(cacheFilenameTmp));
-        // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
-        if (await fileExists(this.cacheFilename)) {
-          await fs.promises.rename(this.cacheFilename, cacheFilenameTmp2);
+    try {
+      if (this.cacheFilename) {
+        //get a file lock
+        await fixFsStacktrace(lock(this.cacheFilename));
+        try {
+          const dirArr = [...this.createdDirs.values()];
+          const newFileContent = JSON.stringify(dirArr, null, 3);
+
+          const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
+          const cacheFilenameTmp2 = `${this.cacheFilename}.TMP.OLD`;
+          await fixFsStacktrace(
+            fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
+              encoding: "utf-8",
+            })
+          );
+          console.assert(await fileExists(cacheFilenameTmp));
+          // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
+          if (await fileExists(this.cacheFilename)) {
+            await fixFsStacktrace(
+              fs.promises.rename(this.cacheFilename, cacheFilenameTmp2)
+            );
+          }
+          console.assert(await fileExists(cacheFilenameTmp));
+          await fixFsStacktrace(
+            fs.promises.rename(cacheFilenameTmp, this.cacheFilename)
+          );
+          if (await fileExists(cacheFilenameTmp2)) {
+            await fixFsStacktrace(fs.promises.rm(cacheFilenameTmp2));
+          }
+        } finally {
+          await fixFsStacktrace(unlock(this.cacheFilename));
         }
-        console.assert(await fileExists(cacheFilenameTmp));
-        await fs.promises.rename(cacheFilenameTmp, this.cacheFilename);
-        if (await fileExists(cacheFilenameTmp2)) {
-          await fs.promises.rm(cacheFilenameTmp2);
-        }
-      } finally {
-        await unlock(this.cacheFilename);
       }
+    } catch (e) {
+      console.log("error in UploadDirsCache.flush()", e);
+      throw e;
     }
   }
 
@@ -90,7 +113,9 @@ export class UploadDirsCache {
     cacheFilename: string,
     onSaveCallback?: (count: number) => void
   ): Promise<UploadDirsCache> {
-    const fileContent = await fs.promises.readFile(cacheFilename, "utf-8");
+    const fileContent = await fixFsStacktrace(
+      fs.promises.readFile(cacheFilename, "utf-8")
+    );
     const createdPods: Set<string> = new Set(JSON.parse(fileContent));
     return new UploadDirsCache(cacheFilename, onSaveCallback, createdPods);
   }

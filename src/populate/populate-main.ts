@@ -124,11 +124,18 @@ async function main() {
   }
 
   if (cli.userJsonOut) {
-    await fs.promises.writeFile(
-      cli.userJsonOut,
-      JSON.stringify(createdUserInfos, null, 3),
-      { encoding: "utf-8" }
-    );
+    try {
+      await fs.promises.writeFile(
+        cli.userJsonOut,
+        JSON.stringify(createdUserInfos, null, 3),
+        { encoding: "utf-8" }
+      );
+    } catch (e: any) {
+      // Node.js fs async function have no stacktrace
+      // See https://github.com/nodejs/node/issues/30944
+      // This works around that. And makes the code very ugly.
+      throw new Error(e.message);
+    }
     cli.v2(`Wrote user info to '${cli.userJsonOut}'`);
   }
 }

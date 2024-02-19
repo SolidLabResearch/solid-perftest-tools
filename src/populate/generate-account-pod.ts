@@ -42,9 +42,16 @@ export class GenerateAccountsAndPodsCache {
     this.createdPods[this.index(accountCreateOrder)] = podAndOwnerInfo;
     if (this.cacheFilename) {
       const newFileContent = JSON.stringify(this.createdPods, null, 3);
-      await fs.promises.writeFile(this.cacheFilename, newFileContent, {
-        encoding: "utf-8",
-      });
+      try {
+        await fs.promises.writeFile(this.cacheFilename, newFileContent, {
+          encoding: "utf-8",
+        });
+      } catch (e: any) {
+        // Node.js fs async function have no stacktrace
+        // See https://github.com/nodejs/node/issues/30944
+        // This works around that. And makes the code very ugly.
+        throw new Error(e.message);
+      }
     }
   }
 
@@ -55,7 +62,15 @@ export class GenerateAccountsAndPodsCache {
   public static async fromFile(
     cacheFilename: string
   ): Promise<GenerateAccountsAndPodsCache> {
-    const fileContent = await fs.promises.readFile(cacheFilename, "utf-8");
+    let fileContent;
+    try {
+      fileContent = await fs.promises.readFile(cacheFilename, "utf-8");
+    } catch (e: any) {
+      // Node.js fs async function have no stacktrace
+      // See https://github.com/nodejs/node/issues/30944
+      // This works around that. And makes the code very ugly.
+      throw new Error(e.message);
+    }
     const createdPods = JSON.parse(fileContent);
     console.log(
       `Read GenerateAccountsAndPodsCache from file "${cacheFilename}", saw ${
