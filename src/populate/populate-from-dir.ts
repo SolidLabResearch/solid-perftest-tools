@@ -58,9 +58,9 @@ export class UploadDirsCache {
     this.createdDirs.add(this.index(pod, filename));
     this.saveCountDown++;
     //TODO only add every X files or Y time
-    if (this.saveCountDown >= 100) {
-      await this.flush();
+    if (this.saveCountDown >= 1000) {
       this.saveCountDown = 0;
+      await this.flush();
       this.onSaveCallback(this.createdDirs.size);
     }
   }
@@ -68,6 +68,18 @@ export class UploadDirsCache {
   async flush() {
     try {
       if (this.cacheFilename) {
+        if (!(await fileExists(this.cacheFilename))) {
+          // Make sure there is at least an empty file.
+
+          // Possible race condition :-/
+          // Sadly, we can't lock a file before it exists.
+          await fixFsStacktrace(
+            fs.promises.writeFile(this.cacheFilename, "{}", {
+              encoding: "utf-8",
+            })
+          );
+        }
+
         //get a file lock
         await fixFsStacktrace(lock(this.cacheFilename));
         try {
