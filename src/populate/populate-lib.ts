@@ -121,6 +121,7 @@ export async function populateServersFromDir({
     }
   }
 
+  cli.v1(`Creating needed users/pods...`);
   const createdUsersInfo: PodAndOwnerInfoAndDirInfo[] = [];
   for (const [ssAccountCreateUri, serverDirWithAccounts] of Object.entries(
     urlToDirMap
@@ -164,47 +165,42 @@ export async function populateServersFromDir({
         index: i + createdUsersInfo.length, //p.index + createdUsersInfo.length,
       }))
     );
+  }
+  cli.v1(`All users/pods created.`);
 
-    const authFetchCache = new AuthFetchCache(
-      cli,
-      currentCreatedUsersInfo,
-      true,
-      "all"
-    );
-    await authFetchCache.discoverMachineLoginMethods();
-
-    cli.v1(`Pre-caching auth`);
-    let authCacheFile = populateCacheDir
-      ? Path.join(populateCacheDir, "authCache.json")
-      : null;
-    if (authCacheFile) {
-      if (await fileExists(authCacheFile)) {
-        await authFetchCache.load(authCacheFile);
-        //preCache will not fetch user or access tokens if they are still valid
-        await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
-        await authFetchCache.validate(authFetchCache.accountCount, 60 * 10 * 3);
-      } else {
-        await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
-      }
+  const authFetchCache = new AuthFetchCache(cli, createdUsersInfo, true, "all");
+  await authFetchCache.discoverMachineLoginMethods();
+  cli.v1(`Pre-caching auth`);
+  let authCacheFile = populateCacheDir
+    ? Path.join(populateCacheDir, "authCache.json")
+    : null;
+  if (authCacheFile) {
+    if (await fileExists(authCacheFile)) {
+      await authFetchCache.load(authCacheFile);
+      //preCache will not fetch user or access tokens if they are still valid
+      await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
+      await authFetchCache.validate(authFetchCache.accountCount, 60 * 10 * 3);
     } else {
       await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
     }
-    if (authCacheFile) {
-      await authFetchCache.save(authCacheFile);
-    }
-
-    cli.v1(`Uploading files to pods`);
-    await populatePodsFromDir(
-      createdUsersInfo,
-      authFetchCache,
-      cli,
-      cli.addAclFiles,
-      cli.addAcrFiles,
-      uploadDirsCache,
-      maxParallelism
-    );
-    cli.v1(`Uploaded files to pods`);
+  } else {
+    await authFetchCache.preCache(authFetchCache.accountCount, 60 * 10 * 3);
   }
+  if (authCacheFile) {
+    await authFetchCache.save(authCacheFile);
+  }
+
+  cli.v1(`Uploading files to pods`);
+  await populatePodsFromDir(
+    createdUsersInfo,
+    authFetchCache,
+    cli,
+    cli.addAclFiles,
+    cli.addAcrFiles,
+    uploadDirsCache,
+    maxParallelism
+  );
+  cli.v1(`Uploaded files to pods`);
 
   cli.v1(
     `Finished creating accounts+pods & uploading content. Total: ${createdUsersInfo.length}`
