@@ -18,7 +18,7 @@ import {
 import {
   promiseAllWithLimit,
   promiseAllWithLimitByServer,
-} from "../utils/async-limiter";
+} from "../utils/async-limiter.js";
 import { copyFile } from "fs/promises";
 
 import { lock, unlock } from "proper-lockfile";

@@ -12,11 +12,11 @@ import {
   getServerBaseUrl,
 } from "../utils/solid-server-detect.js";
 import fs from "fs";
-import { promiseAllWithLimit } from "../utils/async-limiter";
+import { promiseAllWithLimit } from "../utils/async-limiter.js";
 import {
   AccountCreateOrderAndDirInfo,
   PodAndOwnerInfoAndDirInfo,
-} from "./populate-from-dir";
+} from "./populate-from-dir.js";
 import { string } from "yargs";
 
 export class GenerateAccountsAndPodsCache {

@@ -4,8 +4,7 @@ import fs from "node:fs";
 import yargs from "yargs";
 import { MachineLoginMethod, PodAndOwnerInfo } from "../common/interfaces.js";
 import { hideBin } from "yargs/helpers";
-import { DumpType } from "../solid/auth-fetch-cache";
-import { UserToken } from "../solid/solid-auth";
+import { DumpType } from "../solid/auth-fetch-cache.js";
 
 function main(): number {
   const argv = yargs(hideBin(process.argv))
