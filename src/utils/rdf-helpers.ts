@@ -13,7 +13,7 @@ export const RDFTypeValues = [
   "N_QUADS",
 ] as const;
 export type RDFType = typeof RDFTypeValues[number];
-export const RDFContentTypeMap: { [Property in RDFType]: string } = {
+export const RDFContentTypeMap: Record<RDFType, string> = {
   TURTLE: "text/turtle",
   N_TRIPLES: "application/n-triples",
   RDF_XML: "application/rdf+xml",
@@ -21,7 +21,7 @@ export const RDFContentTypeMap: { [Property in RDFType]: string } = {
   N3: "text/n3;charset=utf-8",
   N_QUADS: "application/n-quads",
 };
-export const RDFFormatMap: { [Property in RDFType]: string } = {
+export const RDFFormatMap: Record<RDFType, string> = {
   TURTLE: "Turtle",
   N_TRIPLES: "N-Triples",
   RDF_XML: "RDF/XML",
@@ -29,7 +29,7 @@ export const RDFFormatMap: { [Property in RDFType]: string } = {
   N3: "Notation3",
   N_QUADS: "N-Quads",
 };
-export const RDFExtMap: { [Property in RDFType]: string } = {
+export const RDFExtMap: Record<RDFType, string> = {
   TURTLE: "ttl", //or .turtle
   N_TRIPLES: "nt", //or .ntriples
   N_QUADS: "nq", //or .nquads
@@ -37,6 +37,39 @@ export const RDFExtMap: { [Property in RDFType]: string } = {
   JSON_LD: "jsonld", // or .json
   N3: "n3",
 };
+export const RDFFullExtMap: Record<RDFType, string[]> = {
+  TURTLE: ["ttl", "turtle"],
+  N_TRIPLES: ["nt", "ntriples"],
+  N_QUADS: ["nq", "nquads"],
+  RDF_XML: ["rdf", "rdfxml", "owl"],
+  JSON_LD: ["jsonld", "json"],
+  N3: ["n3"],
+};
+
+function getRDFTypeEntries<T>(r: Record<RDFType, T>): [RDFType, T][] {
+  const res: [RDFType, T][] = [];
+  for (const t of RDFTypeValues) {
+    res.push([t, r[t]]);
+  }
+  return res;
+}
+
+export function extToRdfType(ext: string): RDFType | undefined {
+  for (const [t, e] of getRDFTypeEntries(RDFFullExtMap)) {
+    if (e.includes(ext)) {
+      return t;
+    }
+  }
+  return undefined;
+}
+export function contentTypeToRdfType(contentType: string): RDFType | undefined {
+  for (const [t, ct] of getRDFTypeEntries(RDFContentTypeMap)) {
+    if (ct.startsWith(contentType)) {
+      return t;
+    }
+  }
+  return undefined;
+}
 
 export async function convertRdf(
   inFilename: string,

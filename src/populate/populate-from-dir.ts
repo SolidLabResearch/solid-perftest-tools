@@ -22,6 +22,7 @@ import {
 import { copyFile } from "fs/promises";
 
 import { lock, unlock } from "proper-lockfile";
+import { extToRdfType, RDFContentTypeMap } from "../utils/rdf-helpers";
 
 // Node.js fs async function have no stacktrace
 // See https://github.com/nodejs/node/issues/30944
@@ -238,10 +239,31 @@ export async function populatePodsFromDir(
         filePathInPod.length - fileName.length
       );
 
-      if (!uploadDirsCache || !uploadDirsCache.has(pod, filePathInPod)) {
+      const fileExtDotPos = fileName.lastIndexOf(".");
+      const hasExt = fileExtDotPos != -1;
+      const fileExtDotNegPos = hasExt ? fileExtDotPos - fileName.length : 0;
+
+      const fileExt = fileName.slice(fileExtDotPos + 1);
+      const fileNameWithoutExt = hasExt
+        ? fileName
+        : fileName.slice(0, fileExtDotNegPos);
+      const filePathInPodWithoutEx = hasExt
+        ? filePathInPod
+        : filePathInPod.slice(0, fileExtDotNegPos);
+
+      const rdfType = extToRdfType(fileExt);
+      const contentType = rdfType
+        ? RDFContentTypeMap[rdfType]
+        : CONTENT_TYPE_BYTE;
+
+      if (
+        !uploadDirsCache ||
+        !uploadDirsCache.has(pod, filePathInPodWithoutEx)
+      ) {
         const work = async () => {
           cli.v3(
-            `Uploading. account=${pod.username} file='${podFilePath}' filePathInPod='${filePathInPod}'`
+            `Uploading. account=${pod.username} file='${podFilePath}' 
+            filePathInPodWithoutEx='${filePathInPodWithoutEx} contentType='${contentType}'`
           );
 
           const fileContent = await readFile(podFilePath, { encoding: "utf8" });
@@ -249,9 +271,9 @@ export async function populatePodsFromDir(
             cli,
             pod,
             fileContent,
-            filePathInPod,
+            filePathInPodWithoutEx,
             podAuth,
-            CONTENT_TYPE_BYTE, //TODO use correct content type
+            contentType,
             false,
             true,
             20
@@ -281,7 +303,7 @@ export async function populatePodsFromDir(
               15
             );
           }
-          await uploadDirsCache?.add(pod, filePathInPod);
+          await uploadDirsCache?.add(pod, filePathInPodWithoutEx);
         };
 
         if (!workTodoByServer[pod.oidcIssuer]) {
