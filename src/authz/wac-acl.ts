@@ -26,8 +26,8 @@ ${
   publicRead
     ? `<#public>
   a acl:Authorization;
-  acl:accessTo <./${targetFilename}>;
   acl:agentClass foaf:Agent;
+  acl:accessTo <./${targetFilename}>;
   acl:mode acl:Read${publicWrite ? ", acl:Write" : ""}${
         publicControl ? ", acl:Control" : ""
       }.`
@@ -35,8 +35,8 @@ ${
 }
 <#owner>
     a acl:Authorization;
-    acl:accessTo <./${targetFilename}>;
     acl:agent <${webID}>;
+    acl:accessTo <./${targetFilename}>;
     ${inherit}
     acl:mode acl:Read, acl:Write, acl:Control.
   `;
