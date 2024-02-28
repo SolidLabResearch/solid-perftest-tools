@@ -245,11 +245,11 @@ export async function populatePodsFromDir(
 
       const fileExt = fileName.slice(fileExtDotPos + 1);
       const fileNameWithoutExt = hasExt
-        ? fileName
-        : fileName.slice(0, fileExtDotNegPos);
+        ? fileName.slice(0, fileExtDotNegPos)
+        : fileName;
       const filePathInPodWithoutEx = hasExt
-        ? filePathInPod
-        : filePathInPod.slice(0, fileExtDotNegPos);
+        ? filePathInPod.slice(0, fileExtDotNegPos)
+        : filePathInPod;
 
       const rdfType = extToRdfType(fileExt);
       const contentType = rdfType
@@ -292,7 +292,7 @@ export async function populatePodsFromDir(
               pod,
               podAuth,
               fileDirInPod,
-              fileName,
+              fileNameWithoutExt,
               true,
               false,
               false,
