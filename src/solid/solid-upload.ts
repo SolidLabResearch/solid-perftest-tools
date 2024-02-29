@@ -146,7 +146,8 @@ export async function uploadPodFile(
   contentType: string,
   debugLogging: boolean = false,
   retryAll: boolean = false,
-  retryLimit: number = 5
+  retryLimit: number = 5,
+  append: boolean = false
 ) {
   let retry = true;
   let retryCount = 0;
@@ -165,7 +166,7 @@ export async function uploadPodFile(
       cli,
       targetUri,
       {
-        method: "PUT",
+        method: append ? "POST" : "PUT",
         headers: { "content-type": contentType },
         body: fileContent,
       },

@@ -276,7 +276,8 @@ export async function populatePodsFromDir(
             contentType,
             false,
             true,
-            20
+            20,
+            filePathInPodWithoutEx == "profile/card" //special exception
           );
 
           const authZTypes: ("ACP" | "WAC")[] = [];
