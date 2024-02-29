@@ -302,12 +302,18 @@ export async function populatePodsFromDir(
                   // throw new Error(
                   //   `result Content-Type (${resContentType}) is different from requested (${contentType})`
                   // );
+                  const origServerContent = serverContent;
                   serverContent = (
                     await convertRdf(
-                      stream.Readable.from([serverContent]),
+                      stream.Readable.from([origServerContent]),
                       rdfType || "N_QUADS"
                     )
                   ).toString();
+
+                  console.warn(
+                    `result Content-Type (${resContentType}) is different from requested (${contentType}). 
+                      Converted it ourself to ${rdfType}, ${origServerContent.length} byte to ${serverContent.length} byte.`
+                  );
                 }
 
                 if (!serverContent.trim().endsWith(fileContent.trim())) {
