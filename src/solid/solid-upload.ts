@@ -165,7 +165,7 @@ export async function uploadPodFile(
       cli,
       targetUri,
       {
-        method: "POST",
+        method: "PUT",
         headers: { "content-type": contentType },
         body: fileContent,
       },
