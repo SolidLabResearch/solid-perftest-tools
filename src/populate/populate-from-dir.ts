@@ -23,6 +23,9 @@ import { copyFile } from "fs/promises";
 
 import { lock, unlock } from "proper-lockfile";
 import { extToRdfType, RDFContentTypeMap } from "../utils/rdf-helpers";
+import { joinUri } from "../utils/uri_helper";
+import { AnyFetchResponseType } from "../utils/generic-fetch";
+import { discardBodyData } from "../flood/flood-steps";
 
 // Node.js fs async function have no stacktrace
 // See https://github.com/nodejs/node/issues/30944
@@ -266,7 +269,36 @@ export async function populatePodsFromDir(
             filePathInPodWithoutEx='${filePathInPodWithoutEx} contentType='${contentType}'`
           );
 
-          const fileContent = await readFile(podFilePath, { encoding: "utf8" });
+          let fileContent = await readFile(podFilePath, { encoding: "utf8" });
+
+          if (filePathInPodWithoutEx == "profile/card") {
+            //This is a bit of a hack, to merge CSS generated profile/card with jbr generated profile/card
+
+            const options: any = {
+              method: "GET",
+              Accept: contentType,
+            };
+            const url = joinUri(pod.podUri, filePathInPodWithoutEx);
+            const res: AnyFetchResponseType = await fetch(url, options);
+            if (!res.ok) {
+              const bodyError = await res.text();
+              const errorMessage =
+                `${res.status} - GET with account ${pod.username}, pod path "${filePathInPodWithoutEx}" failed` +
+                `(URL=${url}): ${bodyError}`;
+              throw new Error(errorMessage);
+            } else {
+              if (res.body) {
+                //MERGE server and local version. (If not already done.)
+                const serverContent = await res.text();
+                if (!serverContent.trim().endsWith(fileContent.trim())) {
+                  fileContent = serverContent + "\n" + fileContent;
+                }
+              } else {
+                console.warn("successful fetch GET, but no body!");
+              }
+            }
+          }
+
           await uploadPodFile(
             cli,
             pod,
@@ -276,8 +308,7 @@ export async function populatePodsFromDir(
             contentType,
             false,
             true,
-            20,
-            filePathInPodWithoutEx == "profile/card" //special exception
+            20
           );
 
           const authZTypes: ("ACP" | "WAC")[] = [];
