@@ -22,10 +22,16 @@ import {
 import { copyFile } from "fs/promises";
 
 import { lock, unlock } from "proper-lockfile";
-import { extToRdfType, RDFContentTypeMap } from "../utils/rdf-helpers";
+import {
+  convertRdf,
+  extToRdfType,
+  RDFContentTypeMap,
+  RDFFormatMap,
+} from "../utils/rdf-helpers";
 import { joinUri } from "../utils/uri_helper";
 import { AnyFetchResponseType } from "../utils/generic-fetch";
 import { discardBodyData } from "../flood/flood-steps";
+import stream from "node:stream";
 
 // Node.js fs async function have no stacktrace
 // See https://github.com/nodejs/node/issues/30944
@@ -289,7 +295,21 @@ export async function populatePodsFromDir(
             } else {
               if (res.body) {
                 //MERGE server and local version. (If not already done.)
-                const serverContent = await res.text();
+                let serverContent: string = await res.text();
+
+                const resContentType = res?.headers?.get("content-type");
+                if (!resContentType?.includes(contentType)) {
+                  // throw new Error(
+                  //   `result Content-Type (${resContentType}) is different from requested (${contentType})`
+                  // );
+                  serverContent = (
+                    await convertRdf(
+                      stream.Readable.from([serverContent]),
+                      rdfType || "N_QUADS"
+                    )
+                  ).toString();
+                }
+
                 if (!serverContent.trim().endsWith(fileContent.trim())) {
                   fileContent = serverContent + "\n" + fileContent;
                 }

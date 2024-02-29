@@ -3,6 +3,8 @@ import N3 from "n3";
 import { JsonLdSerializer } from "jsonld-streaming-serializer";
 import { Writable } from "stream";
 import { pipeline } from "node:stream/promises";
+import { ReadStream } from "node:fs";
+import stream from "node:stream";
 
 export const RDFTypeValues = [
   "TURTLE",
@@ -72,10 +74,13 @@ export function contentTypeToRdfType(contentType: string): RDFType | undefined {
 }
 
 export async function convertRdf(
-  inFilename: string,
+  inFilename: string | stream.Readable,
   outType: RDFType
 ): Promise<Buffer> {
-  const inputStream = fs.createReadStream(inFilename);
+  const inputStream =
+    inFilename instanceof stream.Readable
+      ? inFilename
+      : fs.createReadStream(inFilename);
   const parserStream = new N3.StreamParser();
   inputStream.pipe(parserStream);
 
