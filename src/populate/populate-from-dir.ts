@@ -284,6 +284,7 @@ export async function populatePodsFromDir(
               method: "GET",
               Accept: contentType,
             };
+            console.info(`profile/card: Request Accept=${contentType}`);
             const url = joinUri(pod.podUri, filePathInPodWithoutEx);
             const res: AnyFetchResponseType = await fetch(url, options);
             if (!res.ok) {
@@ -296,31 +297,54 @@ export async function populatePodsFromDir(
               if (res.body) {
                 //MERGE server and local version. (If not already done.)
                 let serverContent: string = await res.text();
-
                 const resContentType = res?.headers?.get("content-type");
-                if (!resContentType?.includes(contentType)) {
-                  // throw new Error(
-                  //   `result Content-Type (${resContentType}) is different from requested (${contentType})`
-                  // );
-                  const origServerContent = serverContent;
-                  serverContent = (
-                    await convertRdf(
-                      stream.Readable.from([origServerContent]),
-                      rdfType || "N_QUADS"
-                    )
-                  ).toString();
 
-                  console.warn(
-                    `result Content-Type (${resContentType}) is different from requested (${contentType}). 
-                      Converted it ourself to ${rdfType}, ${origServerContent.length} byte to ${serverContent.length} byte.`
+                console.info(
+                  `profile/card: Result Content-Type=${resContentType}`
+                );
+
+                if (serverContent.trim().endsWith(fileContent.trim())) {
+                  console.info(
+                    `profile/card: server content already contains content to add: doing nothing`
                   );
-                }
+                  skipCount++;
+                  return;
+                } else {
+                  if (!resContentType?.includes(contentType)) {
+                    // throw new Error(
+                    //   `result Content-Type (${resContentType}) is different from requested (${contentType})`
+                    // );
+                    const origServerContent = serverContent;
+                    serverContent = (
+                      await convertRdf(
+                        stream.Readable.from([origServerContent]),
+                        rdfType || "N_QUADS"
+                      )
+                    ).toString();
 
-                if (!serverContent.trim().endsWith(fileContent.trim())) {
-                  fileContent = serverContent + "\n" + fileContent;
+                    console.warn(
+                      `result Content-Type (${resContentType}) is different from requested (${contentType}). 
+                      Converted it ourself to ${rdfType}, ${origServerContent.length} byte to ${serverContent.length} byte.`
+                    );
+                  }
+
+                  if (serverContent.trim().endsWith(fileContent.trim())) {
+                    console.info(
+                      `profile/card: 2 server content already contains content to add: doing nothing`
+                    );
+                    skipCount++;
+                    return;
+                  } else {
+                    console.info(
+                      `profile/card: adding server content to content to upload`
+                    );
+                    fileContent = serverContent + "\n" + fileContent;
+                  }
                 }
               } else {
-                console.warn("successful fetch GET, but no body!");
+                console.warn(
+                  "profile/card: successful fetch GET, but no body!"
+                );
               }
             }
           }
