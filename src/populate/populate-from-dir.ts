@@ -209,6 +209,7 @@ export async function populatePodsFromDir(
   const workTodoByServer: Record<string, (() => Promise<void>)[]> = {};
   let skipCount = 0;
   for (const pod of usersInfos) {
+    let debugCounter = 5;
     const podAuth = await authFetchCache.getPodAuth(pod);
 
     const podListing = await makeDirListing(pod.dir, true);
@@ -284,7 +285,9 @@ export async function populatePodsFromDir(
               method: "GET",
               Accept: contentType,
             };
-            console.info(`profile/card: Request Accept=${contentType}`);
+            console.info(
+              `profile/card ${pod.username} ${filePathInPodWithoutEx}: Request Accept=${contentType}`
+            );
             const url = joinUri(pod.podUri, filePathInPodWithoutEx);
             const res: AnyFetchResponseType = await fetch(url, options);
             if (!res.ok) {
@@ -300,12 +303,12 @@ export async function populatePodsFromDir(
                 const resContentType = res?.headers?.get("content-type");
 
                 console.info(
-                  `profile/card: Result Content-Type=${resContentType}`
+                  `profile/card ${pod.username} ${filePathInPodWithoutEx}: Result Content-Type=${resContentType}`
                 );
 
                 if (serverContent.trim().endsWith(fileContent.trim())) {
                   console.info(
-                    `profile/card: server content already contains content to add: doing nothing`
+                    `profile/card ${pod.username} ${filePathInPodWithoutEx}: server content already contains content to add: doing nothing`
                   );
                   skipCount++;
                   return;
@@ -323,27 +326,43 @@ export async function populatePodsFromDir(
                     ).toString();
 
                     console.warn(
-                      `result Content-Type (${resContentType}) is different from requested (${contentType}). 
+                      `profile/card ${pod.username} ${filePathInPodWithoutEx}: result Content-Type (${resContentType}) is different from requested (${contentType}). 
                       Converted it ourself to ${rdfType}, ${origServerContent.length} byte to ${serverContent.length} byte.`
                     );
                   }
 
                   if (serverContent.trim().endsWith(fileContent.trim())) {
                     console.info(
-                      `profile/card: 2 server content already contains content to add: doing nothing`
+                      `profile/card ${pod.username} ${filePathInPodWithoutEx}: 2 server content already contains content to add: doing nothing`
                     );
                     skipCount++;
                     return;
                   } else {
                     console.info(
-                      `profile/card: adding server content to content to upload`
+                      `profile/card ${pod.username} ${filePathInPodWithoutEx}: adding server content to content to upload`
                     );
                     fileContent = serverContent + "\n" + fileContent;
+
+                    //BACKUP old data
+                    console.info(
+                      `profile/card ${pod.username} ${filePathInPodWithoutEx}: backing up data to ${filePathInPodWithoutEx}_orig`
+                    );
+                    await uploadPodFile(
+                      cli,
+                      pod,
+                      serverContent,
+                      `${filePathInPodWithoutEx}_orig`,
+                      podAuth,
+                      contentType,
+                      debugCounter > 0,
+                      true,
+                      20
+                    );
                   }
                 }
               } else {
                 console.warn(
-                  "profile/card: successful fetch GET, but no body!"
+                  `profile/card ${pod.username} ${filePathInPodWithoutEx}: successful fetch GET, but no body!`
                 );
               }
             }
@@ -356,7 +375,7 @@ export async function populatePodsFromDir(
             filePathInPodWithoutEx,
             podAuth,
             contentType,
-            false,
+            debugCounter > 0,
             true,
             20
           );
@@ -378,7 +397,7 @@ export async function populatePodsFromDir(
               true,
               false,
               false,
-              true,
+              debugCounter > 0,
               authZType,
               false,
               true,
@@ -397,6 +416,7 @@ export async function populatePodsFromDir(
         //TODO test if file is actually uploaded?
         skipCount++;
       }
+      if (debugCounter > 0) debugCounter--;
     }
   }
 
