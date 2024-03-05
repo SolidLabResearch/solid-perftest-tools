@@ -453,7 +453,11 @@ export async function populatePodsFromDir(
 
     if (addAclFiles && dirsPublicReadable) {
       for (const dir of dirsUploaded.keys()) {
-        const dirAcl = `${dir}${dir.endsWith("/") ? "" : "/"}.acl`;
+        const dirWithSlash = `${dir}${dir.endsWith("/") ? "" : "/"}`;
+        if (dirWithSlash == "/") {
+          continue;
+        }
+        const dirAcl = `${dirWithSlash}.acl`;
         const contentType = CONTENT_TYPE_ACL;
         if (!uploadDirsCache || !uploadDirsCache.has(pod, dirAcl)) {
           const work = async () => {
