@@ -193,7 +193,7 @@ const DIR_ACL_PUBLIC_READ = `# Root ACL resource for the agent account
 # unless specifically authorized in other .acl resources.
 <#owner>
     a acl:Authorization;
-    acl:agent <https://n074-24.wall1.ilabt.imec.be/c8u00000026388279067574/profile/card#me>;
+    acl:agent <WEBID>;
     # Optional owner email, to be used for account recovery:
     
     # Set the access to the root storage folder itself
@@ -468,7 +468,7 @@ export async function populatePodsFromDir(
             await uploadPodFile(
               cli,
               pod,
-              DIR_ACL_PUBLIC_READ,
+              DIR_ACL_PUBLIC_READ.replace("WEBID", pod.webID),
               dirAcl,
               podAuth,
               contentType,
