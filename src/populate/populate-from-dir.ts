@@ -202,7 +202,8 @@ const DIR_ACL_PUBLIC_READ = `# Root ACL resource for the agent account
     acl:default <./>;
     # The owner has all of the access modes allowed
     acl:mode
-        acl:Read, acl:Write, acl:Control.`;
+        acl:Read, acl:Write, acl:Control.
+`;
 
 /**
  *
