@@ -27,9 +27,9 @@ import {
   extToRdfType,
   RDFContentTypeMap,
   RDFFormatMap,
-} from "../utils/rdf-helpers";
-import { joinUri } from "../utils/uri_helper";
-import { AnyFetchResponseType } from "../utils/generic-fetch";
+} from "../utils/rdf-helpers.js";
+import { joinUri } from "../utils/uri_helper.js";
+import { AnyFetchResponseType } from "../utils/generic-fetch.js";
 import { discardBodyData } from "../flood/flood-steps";
 import stream from "node:stream";
 
