@@ -369,7 +369,7 @@ export class AuthFetchCache {
         )})`
     );
 
-    console.assert(earliestATStillUsable);
+    console.assert(earliestATStillUsable, "!earliestATStillUsable");
   }
 
   validate(userCount: number, ensureAuthExpirationS: number) {
@@ -434,7 +434,10 @@ export class AuthFetchCache {
       `Testing ${accountCount} solid logins (authenticate=${this.authenticate} authenticateCache="${this.authenticateCache}")...`
     );
     const keys = Object.keys(this.accountInfos);
-    console.assert(accountCount < keys.length);
+    console.assert(
+      accountCount < keys.length,
+      `accountCount=${accountCount} < keys.length=${keys.length}`
+    );
 
     let allSuccess = true;
     for (let accountIndex = 0; accountIndex < accountCount; accountIndex++) {

@@ -38,7 +38,12 @@ export async function makeDirListing(
     const dirEnts = await readdir(curDir, { withFileTypes: true });
     for (const dirEnt of dirEnts) {
       const fullPath = path.join(curDir, dirEnt.name);
-      console.assert(fullPath.startsWith(dirPath));
+      console.assert(
+        fullPath.startsWith(dirPath),
+        `makeDirListing fullPath dirPath mismatch`,
+        fullPath,
+        dirPath
+      );
       const pathFromBase = fullPath.substring(dirPath.length + 1);
       if (dirEnt.isDirectory()) {
         res.dirs.push({

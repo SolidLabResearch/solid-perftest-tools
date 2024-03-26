@@ -316,7 +316,7 @@ export async function getUsableAccessToken(
       }
     }
   }
-  console.assert(false); //unreachable code
+  console.assert(false, "unreachable code"); //unreachable code
   return <AccessToken>{};
 }
 

@@ -175,8 +175,12 @@ export async function fetchPodFile(
         break;
       }
       case "N3_PATCH": {
-        console.assert(mustUpload);
-        console.assert(httpVerb == "PATCH");
+        console.assert(mustUpload, "N3_PATCH unexpected mustUpload == false");
+        console.assert(
+          httpVerb == "PATCH",
+          "N3_PATCH unexpected httpVerb",
+          httpVerb
+        );
 
         // N3 PATCH requires "text/n3" content type header (see https://solidproject.org/TR/protocol#writing-resources)
         options.headers = {
@@ -189,7 +193,11 @@ export async function fetchPodFile(
       }
       case "NO_CONTENT_TRANSLATION": {
         //No content translation: we fetch the requested files in their own content-type (= no Accept header)
-        console.assert(httpVerb == "GET");
+        console.assert(
+          httpVerb == "GET",
+          "NO_CONTENT_TRANSLATION unexpected httpVerb",
+          httpVerb
+        );
 
         const typeIndex = fetchIndex % (RDFTypeValues.length - 2);
         const filenameType = RDFTypeValues[typeIndex];
@@ -208,7 +216,11 @@ export async function fetchPodFile(
         break;
       }
       case "CONTENT_TRANSLATION": {
-        console.assert(httpVerb == "GET");
+        console.assert(
+          httpVerb == "GET",
+          "CONTENT_TRANSLATION unexpected httpVerb",
+          httpVerb
+        );
 
         //for convenience "RDF_XML" is the last of RDFTypeValues
 
@@ -565,7 +577,7 @@ export function sumStatistics(floodStats: FloodStatistics[]): FloodStatistics {
         {}
       );
   };
-  console.assert(floodStats.length > 0);
+  console.assert(floodStats.length > 0, "floodStats.length == 0");
   const first = floodStats[0];
   return {
     pid: floodStats.map((fs) => fs.pid).flat(),
@@ -853,7 +865,12 @@ async function generateNonConflictingN3PatchData(
   if (storage.next >= storage.targets.length) {
     storage.next = 0;
   }
-  console.assert(maxAsyncRequests <= storage.targets.length);
+  console.assert(
+    maxAsyncRequests <= storage.targets.length,
+    "maxAsyncRequests > storage.targets.length",
+    maxAsyncRequests,
+    storage.targets.length
+  );
 
   const target = storage.targets[index];
 
@@ -1152,7 +1169,11 @@ export async function runNamedStep(
       break;
     }
     case "flood": {
-      console.assert(cli.processCount < 2);
+      console.assert(
+        cli.processCount < 2,
+        "cli.processCount >= 2",
+        cli.processCount
+      );
       await stepFlood(floodState, cli, counter, allFetchStartEnd, 0);
       break;
     }

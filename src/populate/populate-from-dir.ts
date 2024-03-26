@@ -107,14 +107,20 @@ export class UploadDirsCache {
               encoding: "utf-8",
             })
           );
-          console.assert(await fileExists(cacheFilenameTmp));
+          console.assert(
+            await fileExists(cacheFilenameTmp),
+            `flush 1 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
+          );
           // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
           if (await fileExists(this.cacheFilename)) {
             await fixFsStacktrace(
               fs.promises.rename(this.cacheFilename, cacheFilenameTmp2)
             );
           }
-          console.assert(await fileExists(cacheFilenameTmp));
+          console.assert(
+            await fileExists(cacheFilenameTmp),
+            `flush 2 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
+          );
           await fixFsStacktrace(
             fs.promises.rename(cacheFilenameTmp, this.cacheFilename)
           );

@@ -96,7 +96,10 @@ async function main() {
           cli.authenticateCache
         );
         await authFetchCache.discoverMachineLoginMethods();
-        console.assert(authFetchCache.authAccessTokenByUser !== null);
+        console.assert(
+          authFetchCache.authAccessTokenByUser !== null,
+          "authFetchCache.authAccessTokenByUser !== null"
+        );
         await authFetchCache.loadString(message.authCacheContent);
         // await authFetchCache.validate(cli.userCount, cli.ensureAuthExpirationS);
         floodState = {
@@ -118,7 +121,8 @@ async function main() {
             );
           }
           console.assert(
-            floodState.authFetchCache.authAccessTokenByUser !== null
+            floodState.authFetchCache.authAccessTokenByUser !== null,
+            "floodState.authFetchCache.authAccessTokenByUser !== null"
           );
           if (message.stepName != "flood") {
             await runNamedStep(

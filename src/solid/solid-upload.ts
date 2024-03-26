@@ -80,7 +80,9 @@ export async function createPodAccountsApi6(
 
   console.assert(
     accountCreateOrder.createAccountUri.endsWith(`/idp/register/`) ||
-      accountCreateOrder.createAccountUri.endsWith(`/.account/register/`)
+      accountCreateOrder.createAccountUri.endsWith(`/.account/register/`),
+    `Unexpected accountCreateOrder.createAccountUri`,
+    accountCreateOrder.createAccountUri
   );
   cli.v2(`POSTing to: ${accountCreateOrder.createAccountUri}`);
 
@@ -302,9 +304,16 @@ export async function addAuthZFile(
 
   console.assert(
     targetDirname.length === 0 ||
-      targetDirname.charAt(targetDirname.length - 1) === "/"
+      targetDirname.charAt(targetDirname.length - 1) === "/",
+    `addAuthZFile targetDirname does not start with /`,
+    targetDirname
   );
-  console.assert((targetBaseFilename.length === 0) === isDir);
+  console.assert(
+    (targetBaseFilename.length === 0) === isDir,
+    `addAuthZFile targetDirname isDir mismatch`,
+    targetDirname,
+    isDir
+  );
 
   if (authZType == "WAC") {
     newAuthZContent = makeAclContent(
