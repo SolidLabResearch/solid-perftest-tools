@@ -16,6 +16,7 @@ import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
 import { fetchWithLog } from "../utils/verbosity.js";
 import { getFetchAuthHeadersFromAccessToken, PodAuth } from "./solid-auth.js";
+import { localPathToUrlPath } from "../utils/file-utils";
 
 /**
  *
@@ -284,8 +285,8 @@ export async function addAuthZFile(
   cli: CliArgsPopulate,
   pod: PodAndOwnerInfo,
   podAuth: PodAuth,
-  targetDirname: string, //dir of the file that needs AuthZ
-  targetBaseFilename: string, //base name (without dir) of the file that needs AuthZ. For dirs, this is empty
+  targetDirname: string, //dir of the file that needs AuthZ (assumed NOT URL encoded)
+  targetBaseFilename: string, //base name (without dir) of the file that needs AuthZ. For dirs, this is empty  (assumed NOT URL encoded)
   publicRead: boolean = true,
   publicWrite: boolean = false,
   publicControl: boolean = false,
@@ -335,7 +336,7 @@ export async function addAuthZFile(
     cli,
     pod,
     newAuthZContent,
-    fullPathPodFilename,
+    localPathToUrlPath(fullPathPodFilename),
     podAuth,
     contentType,
     debugLogging,

@@ -9,7 +9,11 @@ import {
 import { AuthFetchCache } from "../solid/auth-fetch-cache.js";
 import { CONTENT_TYPE_ACL, CONTENT_TYPE_BYTE } from "../utils/content-type.js";
 import { CliArgsPopulate } from "./populate-args.js";
-import { fileExists, makeDirListing } from "../utils/file-utils.js";
+import {
+  fileExists,
+  localPathToUrlPath,
+  makeDirListing,
+} from "../utils/file-utils.js";
 import {
   AccountCreateOrder,
   accountEmail,
@@ -274,7 +278,7 @@ export async function populatePodsFromDir(
 
     for (const fileToUpload of podListing.files) {
       const podFilePath = fileToUpload.fullPath;
-      const filePathInPod = fileToUpload.pathFromBase;
+      const filePathInPod = localPathToUrlPath(fileToUpload.pathFromBase);
       const fileName = fileToUpload.name;
       const fileDirInPod = filePathInPod.substring(
         0,
@@ -293,6 +297,7 @@ export async function populatePodsFromDir(
       const filePathInPodWithoutEx = hasExt
         ? filePathInPod.slice(0, fileExtDotNegPos)
         : filePathInPod;
+      const filePathInPodWithoutExEncoded = localPathToUrlPath(filePathInPod);
 
       const rdfType = extToRdfType(fileExt);
       const contentType = rdfType
@@ -301,12 +306,12 @@ export async function populatePodsFromDir(
 
       if (
         !uploadDirsCache ||
-        !uploadDirsCache.has(pod, filePathInPodWithoutEx)
+        !uploadDirsCache.has(pod, filePathInPodWithoutExEncoded)
       ) {
         const work = async () => {
           cli.v3(
             `Uploading. account=${pod.username} file='${podFilePath}' 
-            filePathInPodWithoutEx='${filePathInPodWithoutEx} contentType='${contentType}'`
+            filePathInPodWithoutEx='${filePathInPodWithoutEx} filePathInPodWithoutExEncoded=${filePathInPodWithoutExEncoded} contentType='${contentType}'`
           );
 
           let fileContent = await readFile(podFilePath, { encoding: "utf8" });
@@ -405,7 +410,7 @@ export async function populatePodsFromDir(
             cli,
             pod,
             fileContent,
-            filePathInPodWithoutEx,
+            filePathInPodWithoutExEncoded,
             podAuth,
             contentType,
             debugCounter > 0,
@@ -437,7 +442,7 @@ export async function populatePodsFromDir(
               15
             );
           }
-          await uploadDirsCache?.add(pod, filePathInPodWithoutEx);
+          await uploadDirsCache?.add(pod, filePathInPodWithoutExEncoded);
         };
 
         if (!workTodoByServer[pod.oidcIssuer]) {

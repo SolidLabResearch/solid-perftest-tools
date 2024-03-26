@@ -20,6 +20,13 @@ interface DirListing {
   dirs: DirInfo[];
 }
 
+export function localPathToUrlPath(localPath: string): string {
+  return localPath
+    .split("/")
+    .map((p) => encodeURIComponent(p))
+    .join("/");
+}
+
 export async function makeDirListing(
   dirPath: string,
   recursive: boolean
