@@ -288,7 +288,7 @@ export async function populatePodsFromDir(
       const fileName = fileToUpload.name;
       const fileDirInPod = filePathInPod.substring(
         0,
-        filePathInPod.length - fileName.length
+        filePathInPod.length - encodeURIComponent(fileName).length
       );
       dirsUploaded.add(fileDirInPod);
 
@@ -303,7 +303,9 @@ export async function populatePodsFromDir(
       const filePathInPodWithoutEx = hasExt
         ? filePathInPod.slice(0, fileExtDotNegPos)
         : filePathInPod;
-      const filePathInPodWithoutExEncoded = localPathToUrlPath(filePathInPod);
+      const filePathInPodWithoutExEncoded = localPathToUrlPath(
+        filePathInPodWithoutEx
+      );
 
       const rdfType = extToRdfType(fileExt);
       const contentType = rdfType
