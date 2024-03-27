@@ -303,9 +303,7 @@ export async function populatePodsFromDir(
       const filePathInPodWithoutEx = hasExt
         ? filePathInPod.slice(0, fileExtDotNegPos)
         : filePathInPod;
-      const filePathInPodWithoutExEncoded = localPathToUrlPath(
-        filePathInPodWithoutEx
-      );
+      const filePathInPodWithoutExEncoded = filePathInPodWithoutEx;
 
       const rdfType = extToRdfType(fileExt);
       const contentType = rdfType
