@@ -30,6 +30,7 @@ export interface AccessToken {
   token: string;
   dpopKeyPair: KeyPair;
   expire: Date;
+  created: Date;
 }
 
 export interface PodAuth {
@@ -176,13 +177,23 @@ export async function createUserTokenv7(
 
 export function stillUsableAccessToken(
   accessToken: AccessToken,
-  deadline_s: number = 5 * 60
+  deadline_s: number = 5 * 60,
+  max_age_s?: number
 ): boolean {
   if (!accessToken.token || !accessToken.expire) {
     return false;
   }
   const now = new Date().getTime();
   const expire = accessToken.expire.getTime();
+  const created = accessToken.created.getTime();
+
+  //First check creation time
+  if (max_age_s && now - created > max_age_s * 1000) {
+    //the access  token was created to long ago
+    return false;
+  }
+
+  //Then check expiration time
   //accessToken.expire should be 5 minutes in the future at least
   return expire > now && expire - now > deadline_s * 1000;
 }
@@ -209,7 +220,11 @@ export async function getUsableAccessToken(
     try {
       if (
         accessToken === null ||
-        !stillUsableAccessToken(accessToken, ensureAuthExpirationS)
+        !stillUsableAccessToken(
+          accessToken,
+          ensureAuthExpirationS,
+          cli.accessTokenAlwaysExpireAfterS
+        )
       ) {
         const generateDpopKeyPairDurationStart = new Date().getTime();
         const dpopKeyPair = await generateDpopKeyPair();
@@ -268,13 +283,13 @@ export async function getUsableAccessToken(
 
         const { access_token: accessTokenStr, expires_in: expiresIn } =
           JSON.parse(body);
-        const expire = new Date(
-          new Date().getTime() + parseInt(expiresIn) * 1000
-        );
+        const now = new Date();
+        const expire = new Date(now.getTime() + parseInt(expiresIn) * 1000);
         accessToken = {
           token: accessTokenStr,
           expire: expire,
           dpopKeyPair: dpopKeyPair,
+          created: now,
         };
         cli.v3(
           `Created Access Token using CSS token: \nusername=${pod.username}\n, id=${id}\n, secret=${secret}\n, expiresIn=${expiresIn}\n, accessToken=${accessTokenStr}`

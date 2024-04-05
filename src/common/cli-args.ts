@@ -29,6 +29,9 @@ export interface CliArgsCommon {
   accountSourceTemplateOidcIssuer?: string;
   accountSourceTemplatePodUri?: string;
 
+  //override access token ttl (in minutes) (do nothing if undefined)
+  accessTokenAlwaysExpireAfterS?: number;
+
   v1: (message?: any, ...optionalParams: any[]) => void;
   v2: (message?: any, ...optionalParams: any[]) => void;
   v3: (message?: any, ...optionalParams: any[]) => void;
@@ -249,6 +252,8 @@ export function processYargsCommon(argv: ParsedArgvCommonType): CliArgsCommon {
 
   return {
     verbosity_count: argv.v,
+
+    accessTokenAlwaysExpireAfterS: 3600 * 10, //don't trust access tokens after 10h. TODO make CLI parameter
 
     accountAction,
     accountSource,

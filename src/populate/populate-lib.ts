@@ -52,6 +52,8 @@ export async function populateServersFromDir({
     accountSourceTemplateUsername: "error",
     accountSourceTemplatePass: "password",
 
+    accessTokenAlwaysExpireAfterS: 3600 * 10, //don't trust access tokens after 10 hours
+
     fileSize: 0,
     fileCount: 0,
     addAclFiles: authorization == "WAC",

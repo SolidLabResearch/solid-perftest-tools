@@ -155,7 +155,10 @@ export class AuthFetchCache {
     const key = this.toKey(pod);
     //remove access token if it is about to expire
     const at = this.authAccessTokenByUser[key];
-    if (at && !stillUsableAccessToken(at, 60)) {
+    if (
+      at &&
+      !stillUsableAccessToken(at, 60, this.cli.accessTokenAlwaysExpireAfterS)
+    ) {
       this.authAccessTokenByUser[key] = null;
       this.authFetchersByUser[key] = null;
     }
@@ -340,7 +343,8 @@ export class AuthFetchCache {
           earliestATWasReused = wasReused;
           earliestATStillUsable = stillUsableAccessToken(
             accessToken,
-            ensureAuthExpirationS
+            ensureAuthExpirationS,
+            this.cli.accessTokenAlwaysExpireAfterS
           );
           earliestATCurAT = accessToken;
           earliestATPreviousAT = this.authAccessTokenByUser[key];
@@ -407,12 +411,17 @@ export class AuthFetchCache {
       if (
         this.authenticateCache === "all" &&
         accessToken &&
-        !stillUsableAccessToken(accessToken, ensureAuthExpirationS)
+        !stillUsableAccessToken(
+          accessToken,
+          ensureAuthExpirationS,
+          this.cli.accessTokenAlwaysExpireAfterS
+        )
       ) {
         const secondUntilExpiration =
           (accessToken.expire.getTime() - now.getTime()) / 1000.0;
         console.warn(
           `   No usable access token for ${account}. \n` +
+            `         created=${accessToken.created} \n` +
             `      expiration=${accessToken.expire} \n` +
             `             now=${now} \n` +
             `      secondUntilExpiration=${secondUntilExpiration}`
@@ -556,6 +565,7 @@ export class AuthFetchCache {
                 : {
                     token: accessToken.token,
                     expire: accessToken.expire.getTime(),
+                    created: accessToken.created.getTime(),
                     dpopKeyPair: {
                       publicKey: accessToken.dpopKeyPair.publicKey, //already a JWK
                       privateKeyType: accessToken.dpopKeyPair.privateKey.type,
@@ -652,7 +662,7 @@ export class AuthFetchCache {
           accessToken.dpopKeyPair.privateKeyType
         );
 
-        //because we got if from JSON, accessToken.expire will be a string, not a Date!
+        //because we got if from JSON, accessToken.expire and accessToken.created will be a string, not a Date!
         // @ts-ignore
         if (typeof accessToken.expire !== "number") {
           throw new Error(
@@ -662,8 +672,25 @@ export class AuthFetchCache {
               }`
           );
         }
+        // @ts-ignore
+        if (!accessToken.created) {
+          //backward compatibility: if missing, assume created 14 days ago
+          // @ts-ignore
+          accessToken.created = new Date().getTime() - 3600 * 24 * 14 * 1000;
+        }
+        // @ts-ignore
+        if (typeof accessToken.created !== "number") {
+          throw new Error(
+            `AccessToken in JSON has created of unexpected type` +
+              ` (${typeof accessToken.created} instead of number) value=${
+                accessToken.created
+              }`
+          );
+        }
         const expireLong: number = <number>accessToken.expire;
+        const createdLong: number = <number>accessToken.created;
         accessToken.expire = new Date(expireLong);
+        accessToken.created = new Date(createdLong);
       }
     }
   }
