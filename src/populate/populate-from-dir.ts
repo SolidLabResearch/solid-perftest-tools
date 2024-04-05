@@ -95,7 +95,12 @@ export class UploadDirsCache {
         }
 
         //get a file lock
-        await fixFsStacktrace(lock(this.cacheFilename));
+        await fixFsStacktrace(
+          lock(this.cacheFilename, {
+            stale: 10000,
+            retries: { retries: 100, minTimeout: 10, maxTimeout: 100 },
+          })
+        );
         try {
           const dirArr = [...this.createdDirs.values()];
           const newFileContent = JSON.stringify(dirArr, null, 3);
