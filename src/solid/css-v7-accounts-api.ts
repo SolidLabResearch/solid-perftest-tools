@@ -504,14 +504,34 @@ export async function createPodAccountsApi7(
     throw Error("createAccountUri may not be empty");
   }
 
-  const cookieHeader = await createEmptyAccount(
-    cli,
-    accountCreateOrder,
-    basicAccountApiInfo
-  );
-  if (!cookieHeader) {
-    cli.v1(`404 registering user: incompatible Accounts API path`);
-    throw Error(`404 registering user: incompatible IdP path`);
+  let cookieHeader = null;
+  let accountAlreadyExisted = false;
+  try {
+    // FIRST, check if the account already exists.
+    cookieHeader = await accountLogin(
+      cli,
+      basicAccountApiInfo,
+      accountCreateOrder.email,
+      accountCreateOrder.password
+    );
+    // No error! So this account already exists
+    accountAlreadyExisted = true;
+  } catch (e) {
+    // As expected, an error because account does not yet exist.
+    // So we should just ignore this error
+    accountAlreadyExisted = false;
+    cli.v3(`As expected, account does not yet exists.`);
+
+    //Create the account
+    cookieHeader = await createEmptyAccount(
+      cli,
+      accountCreateOrder,
+      basicAccountApiInfo
+    );
+    if (!cookieHeader) {
+      cli.v1(`404 registering user: incompatible Accounts API path`);
+      throw Error(`404 registering user: incompatible IdP path`);
+    }
   }
 
   //We have an account now! And the cookies to use it.
@@ -530,30 +550,32 @@ export async function createPodAccountsApi7(
     throw Error(`error registering user: incompatible .account api info`);
   }
 
-  /// Create a password for the account ////
-  const passwordCreated = await createPassword(
-    cli,
-    cookieHeader,
-    accountCreateOrder.username,
-    accountCreateOrder.email,
-    accountCreateOrder.password,
-    fullAccountApiInfo
-  );
-  if (!passwordCreated) {
-    //user already existed. We ignore that.
-    throw Error(`error registering user: user already exists`);
-  }
+  if (!accountAlreadyExisted) {
+    /// Create a password for the account ////
+    const passwordCreated = await createPassword(
+      cli,
+      cookieHeader,
+      accountCreateOrder.username,
+      accountCreateOrder.email,
+      accountCreateOrder.password,
+      fullAccountApiInfo
+    );
+    if (!passwordCreated) {
+      //user already existed. We ignore that.
+      throw Error(`error registering user: user already exists`);
+    }
 
-  /// Create a pod and link the WebID in it ////
-  const createdPod = await createAccountPod(
-    cli,
-    cookieHeader,
-    accountCreateOrder.podName,
-    fullAccountApiInfo
-  );
-  if (!createdPod) {
-    //pod not created
-    throw Error(`error registering user: failed to create pod`);
+    /// Create a pod and link the WebID in it ////
+    const createdPod = await createAccountPod(
+      cli,
+      cookieHeader,
+      accountCreateOrder.podName,
+      fullAccountApiInfo
+    );
+    if (!createdPod) {
+      //pod not created
+      throw Error(`error registering user: failed to create pod`);
+    }
   }
 
   const createdAccountInfo = await getAccountInfo(
