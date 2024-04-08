@@ -71,10 +71,12 @@ export class UploadDirsCache {
   async getDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
     if (!this.db) {
       this.db = await open({
-        filename: "/tmp/database.db",
+        filename: this.cacheFilename!,
         driver: sqlite3.Database,
       });
-      await this.db.exec("CREATE TABLE upload_dirs_cache (name TEXT)");
+      await this.db.exec(
+        "CREATE TABLE IF NOT EXISTS upload_dirs_cache (name TEXT)"
+      );
     }
     return this.db;
   }
