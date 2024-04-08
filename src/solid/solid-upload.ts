@@ -193,7 +193,7 @@ export async function uploadPodFile(
         retry = true;
         retryCount += 1;
         console.error(
-          `Got Exception ${e}. That's strange... Will retry. (max 5 times)`,
+          `Got Exception ${e}. That's strange... Will retry. (max ${retryLimit} times)`,
           e
         );
         await setTimeout(100 * retryCount);
