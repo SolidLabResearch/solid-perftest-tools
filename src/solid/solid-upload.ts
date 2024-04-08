@@ -193,11 +193,19 @@ export async function uploadPodFile(
         retry = true;
         retryCount += 1;
         console.error(
-          `Got Exception ${e}. That's strange... Will retry. (max ${retryLimit} times)`,
+          `Got Exception '${e}' when uploading ${targetUri}. That's strange... Will retry (#${retryCount} of max ${retryLimit}).`,
           e
         );
         await setTimeout(100 * retryCount);
       } else {
+        if (retryCount)
+          console.error(
+            `Got Exception '${e}' when uploading ${targetUri}. Already retried ${retryCount} times. Giving up.`
+          );
+        else
+          console.error(
+            `Got Exception '${e}' when uploading ${targetUri}. Retry disabled.`
+          );
         throw e;
       }
     }
@@ -217,10 +225,18 @@ export async function uploadPodFile(
           retry = true;
           retryCount += 1;
           console.error(
-            `Got ${res.status} (${res.statusText}). That's strange... Will retry. (max 5 times)`
+            `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. That's strange... Will retry (#${retryCount} of max ${retryLimit}).`
           );
           await setTimeout(100 * retryCount);
         } else {
+          if (retryCount)
+            console.error(
+              `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. Already retried ${retryCount} times. Giving up.`
+            );
+          else
+            console.error(
+              `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. Retry disabled.`
+            );
           throw new ResponseError(res, body);
         }
       }
