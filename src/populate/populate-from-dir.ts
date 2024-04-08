@@ -74,6 +74,7 @@ export class UploadDirsCache {
         filename: "/tmp/database.db",
         driver: sqlite3.Database,
       });
+      await this.db.exec("CREATE TABLE upload_dirs_cache (name TEXT)");
     }
     return this.db;
   }
