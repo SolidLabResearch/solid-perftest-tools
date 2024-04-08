@@ -24,7 +24,8 @@ import {
   promiseAllWithLimitByServer,
 } from "../utils/async-limiter.js";
 import { copyFile } from "fs/promises";
-
+import sqlite3 from "sqlite3";
+import { Database, open } from "sqlite";
 import { lock, unlock } from "proper-lockfile";
 import {
   convertRdf,
@@ -50,18 +51,10 @@ async function fixFsStacktrace<T>(fsPromise: Promise<T>): Promise<T> {
 
 export class UploadDirsCache {
   cacheFilename?: string = undefined;
-  createdDirs: Set<string> = new Set();
-  saveCountDown: number = 0;
-  onSaveCallback: (count: number) => void;
+  db?: Database<sqlite3.Database, sqlite3.Statement> = undefined;
 
-  constructor(
-    cacheFilename?: string,
-    onSaveCallback?: (count: number) => void,
-    createdPods?: Set<string>
-  ) {
+  constructor(cacheFilename?: string) {
     this.cacheFilename = cacheFilename;
-    this.onSaveCallback = onSaveCallback || ((a) => {});
-    this.createdDirs = createdPods ? createdPods : new Set();
   }
 
   private index(pod: PodAndOwnerInfoAndDirInfo, filename: string): string {
@@ -69,94 +62,149 @@ export class UploadDirsCache {
   }
 
   async add(pod: PodAndOwnerInfoAndDirInfo, filename: string): Promise<void> {
-    this.createdDirs.add(this.index(pod, filename));
-    this.saveCountDown++;
-    //TODO only add every X files or Y time
-    if (this.saveCountDown >= 1000) {
-      this.saveCountDown = 0;
-      await this.flush();
-      this.onSaveCallback(this.createdDirs.size);
+    const index = this.index(pod, filename);
+    const result = await (
+      await this.getDB()
+    ).run("INSERT INTO upload_dirs_cache (name) VALUES (?)", index);
+  }
+
+  async getDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
+    if (!this.db) {
+      this.db = await open({
+        filename: "/tmp/database.db",
+        driver: sqlite3.Database,
+      });
     }
+    return this.db;
   }
 
   async flush() {
-    try {
-      if (this.cacheFilename) {
-        if (!(await fileExists(this.cacheFilename))) {
-          // Make sure there is at least an empty file.
-
-          // Possible race condition :-/
-          // Sadly, we can't lock a file before it exists.
-          await fixFsStacktrace(
-            fs.promises.writeFile(this.cacheFilename, "{}", {
-              encoding: "utf-8",
-            })
-          );
-        }
-
-        //get a file lock
-        await fixFsStacktrace(
-          lock(this.cacheFilename, {
-            stale: 10000,
-            retries: { retries: 100, minTimeout: 10, maxTimeout: 100 },
-          })
-        );
-        try {
-          const dirArr = [...this.createdDirs.values()];
-          const newFileContent = JSON.stringify(dirArr, null, 3);
-
-          const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
-          const cacheFilenameTmp2 = `${this.cacheFilename}.TMP.OLD`;
-          await fixFsStacktrace(
-            fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
-              encoding: "utf-8",
-            })
-          );
-          console.assert(
-            await fileExists(cacheFilenameTmp),
-            `flush 1 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
-          );
-          // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
-          if (await fileExists(this.cacheFilename)) {
-            await fixFsStacktrace(
-              fs.promises.rename(this.cacheFilename, cacheFilenameTmp2)
-            );
-          }
-          console.assert(
-            await fileExists(cacheFilenameTmp),
-            `flush 2 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
-          );
-          await fixFsStacktrace(
-            fs.promises.rename(cacheFilenameTmp, this.cacheFilename)
-          );
-          if (await fileExists(cacheFilenameTmp2)) {
-            await fixFsStacktrace(fs.promises.rm(cacheFilenameTmp2));
-          }
-        } finally {
-          await fixFsStacktrace(unlock(this.cacheFilename));
-        }
-      }
-    } catch (e) {
-      console.log("error in UploadDirsCache.flush()", e);
-      throw e;
-    }
+    await this.getDB();
   }
 
-  has(pod: PodAndOwnerInfoAndDirInfo, filename: string): boolean {
-    return this.createdDirs.has(this.index(pod, filename));
-  }
-
-  public static async fromFile(
-    cacheFilename: string,
-    onSaveCallback?: (count: number) => void
-  ): Promise<UploadDirsCache> {
-    const fileContent = await fixFsStacktrace(
-      fs.promises.readFile(cacheFilename, "utf-8")
-    );
-    const createdPods: Set<string> = new Set(JSON.parse(fileContent));
-    return new UploadDirsCache(cacheFilename, onSaveCallback, createdPods);
+  async has(
+    pod: PodAndOwnerInfoAndDirInfo,
+    filename: string
+  ): Promise<boolean> {
+    const index = this.index(pod, filename);
+    const result = await (
+      await this.getDB()
+    ).get("SELECT name FROM upload_dirs_cache WHERE name = ?", index);
+    //returns { name: index } or undefined
+    return !!result;
   }
 }
+
+// version using the filesystem  (had bugs)
+// export class UploadDirsCache {
+//   cacheFilename?: string = undefined;
+//   createdDirs: Set<string> = new Set();
+//   saveCountDown: number = 0;
+//   onSaveCallback: (count: number) => void;
+//
+//   constructor(
+//     cacheFilename?: string,
+//     onSaveCallback?: (count: number) => void,
+//     createdPods?: Set<string>
+//   ) {
+//     this.cacheFilename = cacheFilename;
+//     this.onSaveCallback = onSaveCallback || ((a) => {});
+//     this.createdDirs = createdPods ? createdPods : new Set();
+//   }
+//
+//   private index(pod: PodAndOwnerInfoAndDirInfo, filename: string): string {
+//     return `${pod.webID}-${filename}`;
+//   }
+//
+//   async add(pod: PodAndOwnerInfoAndDirInfo, filename: string): Promise<void> {
+//     this.createdDirs.add(this.index(pod, filename));
+//     this.saveCountDown++;
+//     //TODO only add every X files or Y time
+//     if (this.saveCountDown >= 1000) {
+//       this.saveCountDown = 0;
+//       await this.flush();
+//       this.onSaveCallback(this.createdDirs.size);
+//     }
+//   }
+//
+//   async flush() {
+//     try {
+//       if (this.cacheFilename) {
+//         if (!(await fileExists(this.cacheFilename))) {
+//           // Make sure there is at least an empty file.
+//
+//           // Possible race condition :-/
+//           // Sadly, we can't lock a file before it exists.
+//           await fixFsStacktrace(
+//             fs.promises.writeFile(this.cacheFilename, "{}", {
+//               encoding: "utf-8",
+//             })
+//           );
+//         }
+//
+//         //get a file lock
+//         await fixFsStacktrace(
+//           lock(this.cacheFilename, {
+//             stale: 10000,
+//             retries: { retries: 100, minTimeout: 10, maxTimeout: 100 },
+//           })
+//         );
+//         try {
+//           const dirArr = [...this.createdDirs.values()];
+//           const newFileContent = JSON.stringify(dirArr, null, 3);
+//
+//           const cacheFilenameTmp = `${this.cacheFilename}.TMP`;
+//           const cacheFilenameTmp2 = `${this.cacheFilename}.TMP.OLD`;
+//           await fixFsStacktrace(
+//             fs.promises.writeFile(cacheFilenameTmp, newFileContent, {
+//               encoding: "utf-8",
+//             })
+//           );
+//           console.assert(
+//             await fileExists(cacheFilenameTmp),
+//             `flush 1 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
+//           );
+//           // await fs.promises.copyFile(cacheFilenameTmp, this.cacheFilename);
+//           if (await fileExists(this.cacheFilename)) {
+//             await fixFsStacktrace(
+//               fs.promises.rename(this.cacheFilename, cacheFilenameTmp2)
+//             );
+//           }
+//           console.assert(
+//             await fileExists(cacheFilenameTmp),
+//             `flush 2 cacheFilenameTmp=${cacheFilenameTmp} does not exist`
+//           );
+//           await fixFsStacktrace(
+//             fs.promises.rename(cacheFilenameTmp, this.cacheFilename)
+//           );
+//           if (await fileExists(cacheFilenameTmp2)) {
+//             await fixFsStacktrace(fs.promises.rm(cacheFilenameTmp2));
+//           }
+//         } finally {
+//           await fixFsStacktrace(unlock(this.cacheFilename));
+//         }
+//       }
+//     } catch (e) {
+//       console.log("error in UploadDirsCache.flush()", e);
+//       throw e;
+//     }
+//   }
+//
+//   has(pod: PodAndOwnerInfoAndDirInfo, filename: string): boolean {
+//     return this.createdDirs.has(this.index(pod, filename));
+//   }
+//
+//   public static async fromFile(
+//     cacheFilename: string,
+//     onSaveCallback?: (count: number) => void
+//   ): Promise<UploadDirsCache> {
+//     const fileContent = await fixFsStacktrace(
+//       fs.promises.readFile(cacheFilename, "utf-8")
+//     );
+//     const createdPods: Set<string> = new Set(JSON.parse(fileContent));
+//     return new UploadDirsCache(cacheFilename, onSaveCallback, createdPods);
+//   }
+// }
 
 export interface AccountCreateOrderAndDirInfo extends AccountCreateOrder {
   dir: string;
@@ -317,7 +365,7 @@ export async function populatePodsFromDir(
 
       if (
         !uploadDirsCache ||
-        !uploadDirsCache.has(pod, filePathInPodWithoutExEncoded)
+        !(await uploadDirsCache.has(pod, filePathInPodWithoutExEncoded))
       ) {
         const work = async () => {
           cli.v3(
@@ -476,7 +524,7 @@ export async function populatePodsFromDir(
         }
         const dirAcl = `${dirWithSlash}.acl`;
         const contentType = CONTENT_TYPE_ACL;
-        if (!uploadDirsCache || !uploadDirsCache.has(pod, dirAcl)) {
+        if (!uploadDirsCache || !(await uploadDirsCache.has(pod, dirAcl))) {
           const work = async () => {
             cli.v3(
               `Uploading dir acl. account=${pod.username} file='${dirAcl}' contentType='${contentType}'`

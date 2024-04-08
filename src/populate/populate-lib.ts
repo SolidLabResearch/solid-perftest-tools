@@ -93,7 +93,8 @@ export async function populateServersFromDir({
     );
     let uploadDirsCacheFile = Path.join(
       populateCacheDir,
-      "uploadDirsCache.json"
+      "uploadDirsCache.sqlite3"
+      // "uploadDirsCache.json"
     );
 
     if (await fileExists(generateAccountsAndPodsCacheFile)) {
@@ -107,20 +108,21 @@ export async function populateServersFromDir({
       );
     }
 
-    const uploadDirsCacheCallback = (count: number) => {
-      cli.v1(`Uploaded ${count} files...`);
-    };
-    if (await fileExists(uploadDirsCacheFile)) {
-      uploadDirsCache = await UploadDirsCache.fromFile(
-        uploadDirsCacheFile,
-        uploadDirsCacheCallback
-      );
-    } else {
-      uploadDirsCache = new UploadDirsCache(
-        uploadDirsCacheFile,
-        uploadDirsCacheCallback
-      );
-    }
+    // const uploadDirsCacheCallback = (count: number) => {
+    //   cli.v1(`Uploaded ${count} files...`);
+    // };
+    uploadDirsCache = new UploadDirsCache(uploadDirsCacheFile);
+    // if (await fileExists(uploadDirsCacheFile)) {
+    //   uploadDirsCache = await UploadDirsCache.fromFile(
+    //     uploadDirsCacheFile,
+    //     uploadDirsCacheCallback,
+    //   );
+    // } else {
+    //   uploadDirsCache = new UploadDirsCache(
+    //     uploadDirsCacheFile,
+    //     uploadDirsCacheCallback,
+    //   );
+    // }
   }
 
   cli.v1(`Creating needed users/pods...`);

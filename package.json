@@ -1,6 +1,6 @@
 {
   "name": "@imec-ilabt/solid-perftest-tools",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "CLI tools to populate and flood solid servers for performance testing purposes.",
   "type": "module",
   "bin": {
@@ -36,10 +36,13 @@
   "homepage": "https://github.com/SolidLabResearch/solid-perftest-tools#readme",
   "dependencies": {
     "@inrupt/solid-client-authn-node": "^1.17.3",
+    "@types/sqlite3": "^3.1.11",
     "jsonld-streaming-serializer": "^2.1.0",
     "n3": ">=1.16.3",
     "node-fetch": ">=3.2.10",
     "proper-lockfile": "^4.1.2",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
     "yargs": "^17.3.1"
   },
   "devDependencies": {
