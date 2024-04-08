@@ -17,6 +17,7 @@ import { joinUri } from "../utils/uri_helper.js";
 import { fetchWithLog } from "../utils/verbosity.js";
 import { getFetchAuthHeadersFromAccessToken, PodAuth } from "./solid-auth.js";
 import { localPathToUrlPath } from "../utils/file-utils";
+import { setTimeout } from "timers/promises";
 
 /**
  *
@@ -162,48 +163,66 @@ export async function uploadPodFile(
     }
 
     const targetUri = joinUri(pod.podUri, podFileRelative);
-    const res = await fetchWithLog(
-      podAuth.fetch,
-      `Upload ${podFileRelative} (auth headers reconstructed)`,
-      cli,
-      targetUri,
-      {
-        method: "PUT",
-        headers: { "content-type": contentType },
-        body: fileContent,
-      },
-      debugLogging,
-      async () => {
-        return podAuth.accessToken
-          ? await getFetchAuthHeadersFromAccessToken(
-              cli,
-              pod,
-              "put",
-              targetUri,
-              podAuth.accessToken
-            )
-          : {};
-      }
-    );
-
-    // console.log(`res.ok`, res.ok);
-    // console.log(`res.status`, res.status);
-    const body = await res.text();
-    // console.log(`res.text`, body);
-    if (!res.ok) {
-      console.error(
-        `${res.status} (${res.statusText}) - Uploading to ${targetUri} (account ${pod.username}, pod path "${podFileRelative}") failed:`
+    let res;
+    try {
+      res = await fetchWithLog(
+        podAuth.fetch,
+        `Upload ${podFileRelative} (auth headers reconstructed)`,
+        cli,
+        targetUri,
+        {
+          method: "PUT",
+          headers: { "content-type": contentType },
+          body: fileContent,
+        },
+        debugLogging,
+        async () => {
+          return podAuth.accessToken
+            ? await getFetchAuthHeadersFromAccessToken(
+                cli,
+                pod,
+                "put",
+                targetUri,
+                podAuth.accessToken
+              )
+            : {};
+        }
       );
-      console.error(body);
-
-      if ((res.status === 408 || retryAll) && retryCount < retryLimit) {
+    } catch (e) {
+      if (retryAll && retryCount < retryLimit) {
         retry = true;
         retryCount += 1;
         console.error(
-          `Got ${res.status} (${res.statusText}). That's strange... Will retry. (max 5 times)`
+          `Got Exception ${e}. That's strange... Will retry. (max 5 times)`,
+          e
         );
+        await setTimeout(100 * retryCount);
       } else {
-        throw new ResponseError(res, body);
+        throw e;
+      }
+    }
+
+    if (!retry && res) {
+      // console.log(`res.ok`, res.ok);
+      // console.log(`res.status`, res.status);
+      const body = await res.text();
+      // console.log(`res.text`, body);
+      if (!res.ok) {
+        console.error(
+          `${res.status} (${res.statusText}) - Uploading to ${targetUri} (account ${pod.username}, pod path "${podFileRelative}") failed:`
+        );
+        console.error(body);
+
+        if ((res.status === 408 || retryAll) && retryCount < retryLimit) {
+          retry = true;
+          retryCount += 1;
+          console.error(
+            `Got ${res.status} (${res.statusText}). That's strange... Will retry. (max 5 times)`
+          );
+          await setTimeout(100 * retryCount);
+        } else {
+          throw new ResponseError(res, body);
+        }
       }
     }
   }
