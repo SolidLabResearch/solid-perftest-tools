@@ -26,7 +26,7 @@ export async function anyFetchWithRetry<Fetcher extends () => Promise<any>>(
   while (retry) {
     retry = false;
     if (debugLogging) {
-      cli.v1(`Will ${description}"`);
+      cli.v1(`Start ${description}"`);
     }
 
     let res;
