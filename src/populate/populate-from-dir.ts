@@ -67,7 +67,7 @@ export class UploadDirsCache {
     const index = this.index(pod, filename);
     const result = await (
       await this.getDB()
-    ).run("INSERT INTO upload_dirs_cache (name) VALUES (?)", index);
+    ).run("INSERT OR IGNORE INTO upload_dirs_cache (name) VALUES (?)", index);
   }
 
   async getDB(): Promise<Database<sqlite3.Database, sqlite3.Statement>> {
@@ -77,7 +77,7 @@ export class UploadDirsCache {
         driver: sqlite3.Database,
       });
       await this.db.exec(
-        "CREATE TABLE IF NOT EXISTS upload_dirs_cache (name TEXT)"
+        "CREATE TABLE IF NOT EXISTS upload_dirs_cache (name TEXT PRIMARY KEY)"
       );
     }
     return this.db;
