@@ -18,6 +18,7 @@ import { fetchWithLog } from "../utils/verbosity.js";
 import { getFetchAuthHeadersFromAccessToken, PodAuth } from "./solid-auth.js";
 import { localPathToUrlPath } from "../utils/file-utils";
 import { setTimeout } from "timers/promises";
+import { anyFetchWithRetry } from "../utils/retry";
 
 /**
  *
@@ -152,20 +153,11 @@ export async function uploadPodFile(
   retryAll: boolean = false,
   retryLimit: number = 5
 ) {
-  let retry = true;
-  let retryCount = 0;
-  while (retry) {
-    retry = false;
-    if (debugLogging) {
-      cli.v1(
-        `Will upload file to account ${pod.username}, pod path "${podFileRelative}"`
-      );
-    }
-
-    const targetUri = joinUri(pod.podUri, podFileRelative);
-    let res;
-    try {
-      res = await fetchWithLog(
+  const targetUri = joinUri(pod.podUri, podFileRelative);
+  const res = await anyFetchWithRetry(
+    cli,
+    () =>
+      fetchWithLog(
         podAuth.fetch,
         `Upload ${podFileRelative} (auth headers reconstructed)`,
         cli,
@@ -187,61 +179,12 @@ export async function uploadPodFile(
               )
             : {};
         }
-      );
-    } catch (e) {
-      if (retryAll && retryCount < retryLimit) {
-        retry = true;
-        retryCount += 1;
-        console.error(
-          `Got Exception '${e}' when uploading ${targetUri}. That's strange... Will retry (#${retryCount} of max ${retryLimit}).`,
-          e
-        );
-        await setTimeout(100 * retryCount);
-      } else {
-        if (retryCount)
-          console.error(
-            `Got Exception '${e}' when uploading ${targetUri}. Already retried ${retryCount} times. Giving up.`
-          );
-        else
-          console.error(
-            `Got Exception '${e}' when uploading ${targetUri}. Retry disabled.`
-          );
-        throw e;
-      }
-    }
-
-    if (!retry && res) {
-      // console.log(`res.ok`, res.ok);
-      // console.log(`res.status`, res.status);
-      const body = await res.text();
-      // console.log(`res.text`, body);
-      if (!res.ok) {
-        console.error(
-          `${res.status} (${res.statusText}) - Uploading to ${targetUri} (account ${pod.username}, pod path "${podFileRelative}") failed:`
-        );
-        console.error(body);
-
-        if ((res.status === 408 || retryAll) && retryCount < retryLimit) {
-          retry = true;
-          retryCount += 1;
-          console.error(
-            `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. That's strange... Will retry (#${retryCount} of max ${retryLimit}).`
-          );
-          await setTimeout(100 * retryCount);
-        } else {
-          if (retryCount)
-            console.error(
-              `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. Already retried ${retryCount} times. Giving up.`
-            );
-          else
-            console.error(
-              `Got ${res.status} (${res.statusText}) when uploading ${targetUri}. Retry disabled.`
-            );
-          throw new ResponseError(res, body);
-        }
-      }
-    }
-  }
+      ),
+    `uploading to ${targetUri} (account ${pod.username}, pod path "${podFileRelative}")`,
+    debugLogging,
+    retryAll,
+    retryLimit
+  );
 }
 
 function lastDotToSemi(input: string): string {

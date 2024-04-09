@@ -37,6 +37,8 @@ import { joinUri } from "../utils/uri_helper.js";
 import { AnyFetchResponseType } from "../utils/generic-fetch.js";
 import { discardBodyData } from "../flood/flood-steps";
 import stream from "node:stream";
+import { fetchWithRetryAndLog } from "../utils/retry";
+import { CliArgsCommon } from "../common/cli-args";
 
 // Node.js fs async function have no stacktrace
 // See https://github.com/nodejs/node/issues/30944
@@ -389,7 +391,17 @@ export async function populatePodsFromDir(
               `profile/card ${pod.username} ${filePathInPodWithoutEx}: Request Accept=${contentType}`
             );
             const url = joinUri(pod.podUri, filePathInPodWithoutEx);
-            const res: AnyFetchResponseType = await fetch(url, options);
+            const res: AnyFetchResponseType = await fetchWithRetryAndLog(
+              fetch,
+              `download profile/card ${pod.username} ${filePathInPodWithoutEx}`,
+              cli,
+              url,
+              options,
+              true,
+              undefined,
+              true,
+              20
+            );
             if (!res.ok) {
               const bodyError = await res.text();
               const errorMessage =
