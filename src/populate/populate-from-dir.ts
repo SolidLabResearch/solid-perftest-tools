@@ -35,10 +35,10 @@ import {
 } from "../utils/rdf-helpers.js";
 import { joinUri } from "../utils/uri_helper.js";
 import { AnyFetchResponseType } from "../utils/generic-fetch.js";
-import { discardBodyData } from "../flood/flood-steps";
+import { discardBodyData } from "../flood/flood-steps.js";
 import stream from "node:stream";
-import { fetchWithRetryAndLog } from "../utils/retry";
-import { CliArgsCommon } from "../common/cli-args";
+import { fetchWithRetryAndLog } from "../utils/retry.js";
+import { CliArgsCommon } from "../common/cli-args.js";
 
 // Node.js fs async function have no stacktrace
 // See https://github.com/nodejs/node/issues/30944

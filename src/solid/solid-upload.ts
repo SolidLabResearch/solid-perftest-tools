@@ -16,9 +16,9 @@ import { createPodAccountsApi7 } from "./css-v7-accounts-api.js";
 import { joinUri } from "../utils/uri_helper.js";
 import { fetchWithLog } from "../utils/verbosity.js";
 import { getFetchAuthHeadersFromAccessToken, PodAuth } from "./solid-auth.js";
-import { localPathToUrlPath } from "../utils/file-utils";
+import { localPathToUrlPath } from "../utils/file-utils.js";
 import { setTimeout } from "timers/promises";
-import { anyFetchWithRetry } from "../utils/retry";
+import { anyFetchWithRetry } from "../utils/retry.js";
 
 /**
  *

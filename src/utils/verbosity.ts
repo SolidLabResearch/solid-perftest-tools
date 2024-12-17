@@ -1,4 +1,4 @@
-import { CliArgsCommon } from "../common/cli-args";
+import { CliArgsCommon } from "../common/cli-args.js";
 
 export async function fetchWithLog<
   FetchType extends (arg0: any, arg1?: any) => Promise<any>

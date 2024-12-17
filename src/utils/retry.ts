@@ -1,16 +1,16 @@
-import { CliArgsPopulate } from "../populate/populate-args";
-import { PodAndOwnerInfo } from "../common/interfaces";
+import { CliArgsPopulate } from "../populate/populate-args.js";
+import { PodAndOwnerInfo } from "../common/interfaces.js";
 import {
   getFetchAuthHeadersFromAccessToken,
   PodAuth,
-} from "../solid/solid-auth";
-import { joinUri } from "./uri_helper";
-import { fetchWithLog } from "./verbosity";
+} from "../solid/solid-auth.js";
+import { joinUri } from "./uri_helper.js";
+import { fetchWithLog } from "./verbosity.js";
 import { setTimeout } from "timers/promises";
-import { ResponseError } from "./error";
+import { ResponseError } from "./error.js";
 import { Body } from "node-fetch";
-import { AnyFetchResponseType } from "./generic-fetch";
-import { CliArgsCommon } from "../common/cli-args";
+import { AnyFetchResponseType } from "./generic-fetch.js";
+import { CliArgsCommon } from "../common/cli-args.js";
 
 export async function anyFetchWithRetry<Fetcher extends () => Promise<any>>(
   cli: CliArgsCommon,

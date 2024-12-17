@@ -18,7 +18,7 @@ import {
 } from "./generate-account-pod.js";
 import * as Path from "path";
 import fs from "fs/promises";
-import { dirExists, fileExists } from "../utils/file-utils";
+import { dirExists, fileExists } from "../utils/file-utils.js";
 export type { PodAndOwnerInfo } from "../common/interfaces.js";
 
 export async function populateServersFromDir({
