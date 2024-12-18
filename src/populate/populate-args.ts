@@ -157,9 +157,6 @@ export function getCliArgs(): CliArgsPopulate {
     })
     .help()
     .check((argvc, options) => {
-      if (argvc.generateFixedSize && !argvc.userCount) {
-        return "--generate-fixed-size requires --user-count";
-      }
       if (argvc.generateFixedSize && !argvc.fileSize) {
         return "--generate-fixed-size requires --file-size";
       }
